@@ -90,11 +90,11 @@ extern uint32_t delay_cnt;
 #define DEBUG_WARN(...) PRINT_NOOP(__VA_ARGS__)
 #define DEBUG_INFO(...) PRINT_NOOP(__VA_ARGS__)
 #endif
-#define DEBUG_GDB(...)      PRINT_NOOP(__VA_ARGS__)
-#define DEBUG_TARGET(...)   PRINT_NOOP(__VA_ARGS__)
-#define DEBUG_PROBE(...)    PRINT_NOOP(__VA_ARGS__)
-#define DEBUG_WIRE(...)     PRINT_NOOP(__VA_ARGS__)
-#define DEBUG_GDB_WIRE(...) PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_GDB(...)      PLATFORM_PRINTF(__VA_ARGS__) //PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_TARGET(...)   PLATFORM_PRINTF(__VA_ARGS__) //PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_PROBE(...)    PLATFORM_PRINTF(__VA_ARGS__) //PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_WIRE(...)     PLATFORM_PRINTF(__VA_ARGS__) //PRINT_NOOP(__VA_ARGS__)
+#define DEBUG_GDB_WIRE(...) PLATFORM_PRINTF(__VA_ARGS__) //PRINT_NOOP(__VA_ARGS__)
 
 void debug_serial_send_stdout(const uint8_t *data, size_t len);
 #else

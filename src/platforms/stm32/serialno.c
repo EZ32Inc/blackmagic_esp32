@@ -18,7 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "general.h"
-#include <libopencm3/stm32/desig.h>
+#include "serialno.h"
+//#include <libopencm3/stm32/desig.h>
 
 char serial_no[DFU_SERIAL_LENGTH];
 

@@ -32,12 +32,12 @@
  * The core can then process the buffer to extract the frame.
  */
 #include "general.h"
-#include "usb.h"
+//#include "usb.h"
 #include "traceswo.h"
 
-#include <libopencm3/cm3/nvic.h>
-#include <libopencm3/stm32/timer.h>
-#include <libopencm3/stm32/rcc.h>
+//#include <libopencm3/cm3/nvic.h>
+//#include <libopencm3/stm32/timer.h>
+//#include <libopencm3/stm32/rcc.h>
 
 /* SWO decoding */
 static bool decoding = false;

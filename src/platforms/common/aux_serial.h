@@ -21,9 +21,9 @@
 #define PLATFORMS_COMMON_AUX_SERIAL_H
 
 #include <stddef.h>
-#include <libopencm3/usb/usbd.h>
-#include <libopencm3/usb/cdc.h>
-#include "usb_types.h"
+//#include <libopencm3/usb/usbd.h>
+//#include <libopencm3/usb/cdc.h>
+//#include "usb_types.h"
 
 #if defined(STM32F0) || defined(STM32F1) || defined(STM32F3) || defined(STM32F4)
 /* XXX: Does the st_usbfs_v2_usb_driver work on F3 with 128 byte buffers? */

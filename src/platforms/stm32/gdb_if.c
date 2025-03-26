@@ -24,10 +24,10 @@
  * uses the USB CDC-ACM device bulk endpoints to implement the channel.
  */
 
-#include <libopencmsis/core_cm3.h>
+//#include <libopencmsis/core_cm3.h>
 
 #include "general.h"
-#include "usb_serial.h"
+//#include "usb_serial.h"
 #include "gdb_if.h"
 
 static uint32_t count_out;

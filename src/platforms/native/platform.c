@@ -21,10 +21,10 @@
 /* This file implements the platform specific functions for the native implementation. */
 
 #include "general.h"
-#include "usb.h"
+//#include "usb.h"
 #include "aux_serial.h"
 #include "morse.h"
-
+/*
 #include <libopencm3/stm32/rcc.h>
 #include <libopencm3/cm3/scb.h>
 #include <libopencm3/cm3/scs.h>
@@ -35,7 +35,7 @@
 #include <libopencm3/stm32/adc.h>
 #include <libopencm3/stm32/flash.h>
 #include <libopencm3/stm32/timer.h>
-
+*/
 static void adc_init(void);
 static void setup_vbus_irq(void);
 

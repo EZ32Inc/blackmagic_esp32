@@ -123,6 +123,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 	while (1) {
 		SET_IDLE_STATE(1);
 		size_t size = gdb_getpacket(pbuf, BUF_SIZE);
+        DEBUG_GDB("size=%d pbuf[0]=%c\n", size, pbuf[0]);
 		// If port closed and target detached, stay idle
 		if (pbuf[0] != '\x04' || cur_target) {
 			SET_IDLE_STATE(0);
@@ -381,6 +382,7 @@ static bool exec_command(char *packet, const size_t length, const cmd_executer_s
 {
 	while (exec->cmd_prefix) {
 		const size_t prefix_length = strlen(exec->cmd_prefix);
+        DEBUG_GDB("exec_command() prefix_length=%d length - prefix_length=%d\n", prefix_length, length - prefix_length);
 		if (!strncmp(packet, exec->cmd_prefix, prefix_length)) {
 			exec->func(packet + prefix_length, length - prefix_length);
 			return true;
@@ -599,7 +601,7 @@ static void handle_v_packet(char *packet, const size_t plen)
 				tok++;
 				continue;
 			}
-			if (isxdigit(tok[0]) && isxdigit(tok[1])) {
+			if (isxdigit((int)tok[0]) && isxdigit((int)tok[1])) {
 				unhexify(pcmdline, tok, 2);
 				if ((*pcmdline == ' ') || (*pcmdline == '\\')) {
 					pcmdline[1] = *pcmdline;
