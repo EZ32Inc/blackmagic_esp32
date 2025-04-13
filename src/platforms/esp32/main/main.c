@@ -72,7 +72,7 @@ static EventGroupHandle_t wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "blackmagic";
+static const char *TAG = "BMP";
 
 
 // extern 
@@ -192,7 +192,7 @@ void gdb_application_thread(void *pvParameters)
 //void main_task(void *parameters);
 
 
-void app_main()
+void app_main_bmp()
 {
     // All pins have outputs disabled at startup.
     // For use with sigrok, it is possible to use the JTAG interface for debugging with sigrock.

@@ -48,8 +48,10 @@
 #if 1
 
 #define TMS_PIN (17) 
-#define TDI_PIN (13) 
-#define TDO_PIN (14) 
+//#define TDI_PIN (13) 
+#define TDI_PIN (2) 
+//#define TDO_PIN (14) 
+#define TDO_PIN (1) 
 #define TCK_PIN (16) 
 
 
@@ -62,8 +64,10 @@
 // ON ESP32 we dont have the PORTS, this is dummy value until code is corrected
 #define SWCLK_PORT  0
 
-#define SWDIO_PIN (14)
-#define SWCLK_PIN (13)
+//#define SWDIO_PIN (14)
+#define SWDIO_PIN (1)
+//#define SWCLK_PIN (13)
+#define SWCLK_PIN (2)
 
 // Allow debugging by toggling the pin
 //#define MY_DEBUG_PIN (12)

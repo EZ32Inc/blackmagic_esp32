@@ -71,7 +71,7 @@ typedef struct mmap_data {
 #endif
 } mmap_data_s;
 
-int cl_debuglevel;
+int cl_debuglevel = 3;
 
 static bool bmp_mmap(char *file, mmap_data_s *map)
 {
