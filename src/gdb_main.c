@@ -39,6 +39,8 @@
 #include "rtt.h"
 #endif
 
+extern void print_info(const char * pString);
+
 #if defined(_WIN32)
 #include <malloc.h>
 #else
@@ -120,10 +122,12 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 	bool single_step = false;
 
 	/* GDB protocol main loop */
+    printf("aliDbg_to_be_IN gdb_main_loop\n");
 	while (1) {
 		SET_IDLE_STATE(1);
 		size_t size = gdb_getpacket(pbuf, BUF_SIZE);
         DEBUG_GDB("size=%d pbuf[0]=%c\n", size, pbuf[0]);
+        printf("aliDbg_IN gdb_main_loop, pbuf[0]=%c\n", pbuf[0]);
 		// If port closed and target detached, stay idle
 		if (pbuf[0] != '\x04' || cur_target) {
 			SET_IDLE_STATE(0);
@@ -135,6 +139,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			uint8_t gp_regs[target_regs_size(cur_target)];
 			target_regs_read(cur_target, gp_regs);
 			gdb_putpacket(hexify(pbuf, gp_regs, sizeof(gp_regs)), sizeof(gp_regs) * 2U);
+            print_info("Read Reg");
 			break;
 		}
 		case 'm': { /* 'm addr,len': Read len bytes from addr */
@@ -151,6 +156,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 				gdb_putpacketz("E01");
 			else
 				gdb_putpacket(hexify(pbuf, mem, len), len * 2U);
+            print_info("Read Bytes");
 			break;
 		}
 		case 'G': { /* 'G XX': Write general registers */
@@ -159,6 +165,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			unhexify(gp_regs, &pbuf[1], sizeof(gp_regs));
 			target_regs_write(cur_target, gp_regs);
 			gdb_putpacketz("OK");
+            print_info("Write Reg");
 			break;
 		}
 		case 'M': { /* 'M addr,len:XX': Write len bytes to addr */
@@ -178,6 +185,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 				gdb_putpacketz("E01");
 			else
 				gdb_putpacketz("OK");
+            print_info("Write Bytes");
 			break;
 		}
 		/*
@@ -198,6 +206,10 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			single_step = true;
 			/* fall through */
 		case 'c': /* 'c [addr]': Continue [at addr] */
+            if(pbuf[0] =='s')
+                print_info("Single step");
+            else if(pbuf[0] =='c')
+                print_info("continue");
 			if (!cur_target) {
 				gdb_putpacketz("X1D");
 				break;
@@ -309,6 +321,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 
 		case '\x04':
 		case 'D': /* GDB 'detach' command. */
+            printf("aliDbg_GDB 'detach' command./n");
 #if PC_HOSTED == 1
 			if (shutdown_bmda)
 				return 0;
@@ -373,9 +386,11 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 
 		default: /* Packet not implemented */
 			DEBUG_GDB("*** Unsupported packet: %s\n", pbuf);
+			printf("aliDbg_Unsupported packet: %s\n", pbuf);
 			gdb_putpacketz("");
 		}
 	}
+    printf("aliDbg_Out of gdb_main_loop\n");
 }
 
 static bool exec_command(char *packet, const size_t length, const cmd_executer_s *exec)

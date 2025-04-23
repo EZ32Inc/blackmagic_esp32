@@ -45,9 +45,13 @@
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
 
-unsigned short gdb_port = 4242; //same as stlink st-util GDB
 #include "platform.h"
 
+unsigned short gdb_port = 4242; //same as stlink st-util GDB
+
+//extern int g_str_changed;
+//extern void print_info(const char * pString);
+//extern char *g_buf32;
 /* The examples use simple WiFi configuration that you can set via
    'make menuconfig'.
 
@@ -182,9 +186,16 @@ void gdb_application_thread(void *pvParameters)
 
 	while (1) {
 		if ((new_sd = accept(sock, (struct sockaddr *)&remote, (socklen_t *)&size)) > 0) {
-			    DEBUG_INFO("aliDbg: accepted new gdb connection\n");
+			    DEBUG_INFO("aliDbg: Accepted new gdb connection\n");
+                //print_info("GDBconnected!");
+                //snprintf(g_buf32, 32, "GDB connected");
+                //g_str_changed= 1;
                 set_gdb_socket(new_sd);
                 gdb_main();
+			    DEBUG_INFO("aliDbg: closed gdb connection\n");
+                //print_info("gdb closed!");
+                //snprintf(g_buf32, 32, "GDB Closed");
+                //g_str_changed= 1;
 	        }
 	}
 }
