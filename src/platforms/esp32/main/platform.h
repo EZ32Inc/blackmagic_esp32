@@ -45,29 +45,22 @@
 
 #define TMS_SET_MODE() do { } while (0)
 
-#if 1
-
-#define TMS_PIN (17) 
-//#define TDI_PIN (13) 
-#define TDI_PIN (2) 
-//#define TDO_PIN (14) 
-#define TDO_PIN (1) 
-#define TCK_PIN (16) 
+#define TMS_PIN (6) 
+#define TDI_PIN (4) 
+#define TDO_PIN (15) 
+#define TCK_PIN (5) 
 
 
 #undef PLATFORM_HAS_TRACESWO 
 #define TRACESWO_PIN 13
 // Workaround for driver
 #define TRACESWO_DUMMY_TX 19
-#endif
 
 // ON ESP32 we dont have the PORTS, this is dummy value until code is corrected
 #define SWCLK_PORT  0
 
-//#define SWDIO_PIN (14)
-#define SWDIO_PIN (1)
-//#define SWCLK_PIN (13)
-#define SWCLK_PIN (2)
+#define SWDIO_PIN (15)
+#define SWCLK_PIN (4)
 
 // Allow debugging by toggling the pin
 //#define MY_DEBUG_PIN (12)
