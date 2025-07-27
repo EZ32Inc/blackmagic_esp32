@@ -20,6 +20,7 @@
 
 /* Convenience functions to convert to/from ascii strings of hex digits. */
 
+/* conflict with openocd
 #include "general.h"
 #include "hex_utils.h"
 
@@ -56,3 +57,4 @@ char *unhexify(void *const buf, const char *hex, const size_t size)
 		dst[idx] = (unhex_digit(hex[0]) << 4U) | unhex_digit(hex[1]);
 	return buf;
 }
+*/

@@ -127,7 +127,9 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 		SET_IDLE_STATE(1);
 		size_t size = gdb_getpacket(pbuf, BUF_SIZE);
         DEBUG_GDB("size=%d pbuf[0]=%c\n", size, pbuf[0]);
-        printf("aliDbg_IN gdb_main_loop, pbuf[0]=%c\n", pbuf[0]);
+
+        //printf("aliDbg_IN gdb_main_loop, pbuf[0]=%c\n", pbuf[0]);
+
 		// If port closed and target detached, stay idle
 		if (pbuf[0] != '\x04' || cur_target) {
 			SET_IDLE_STATE(0);

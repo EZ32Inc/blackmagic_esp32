@@ -21,14 +21,14 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
-#define BOARD_IDENT             "ESP32 Black Magic Probe"
+//#define BOARD_IDENT             "ESP32 Black Magic Probe"
 #define PLATFORM_IDENT          " (ESP32))"
 
 #undef PRIx32
-#define PRIx32 "x"
+#define PRIx32 "lx"
 
 #undef SCNx32
-#define SCNx32 "x"
+#define SCNx32 "lx"
 
 #define NO_USB_PLEASE
 
