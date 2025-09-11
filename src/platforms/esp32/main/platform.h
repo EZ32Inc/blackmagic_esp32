@@ -21,14 +21,14 @@
 #ifndef __PLATFORM_H
 #define __PLATFORM_H
 
-//#define BOARD_IDENT             "ESP32 Black Magic Probe"
+#define BOARD_IDENT             "ESP32 Black Magic Probe"
 #define PLATFORM_IDENT          " (ESP32))"
 
 #undef PRIx32
-#define PRIx32 "lx"
+#define PRIx32 "x"
 
 #undef SCNx32
-#define SCNx32 "lx"
+#define SCNx32 "x"
 
 #define NO_USB_PLEASE
 
@@ -40,16 +40,25 @@
 
 #include "timing.h"
 #include "driver/gpio.h"
+#include "esp_log.h"
+#include "../../../../../../main/common.h"
 
 #include <freertos/FreeRTOS.h>
 
 #define TMS_SET_MODE() do { } while (0)
 
-#define TMS_PIN (6) 
-#define TDI_PIN (4) 
-#define TDO_PIN (15) 
-#define TCK_PIN (5) 
+#define TDO_PIN GPIO_NUM_2 //(15) 
+#define TDI_PIN GPIO_NUM_3 //(4) 
 
+//Not really used now!
+#define TMS_PIN GPIO_NUM_46 //(6) 
+#define TCK_PIN GPIO_NUM_47 //(5) 
+
+//these two already defined in common.h
+//#define SPI2JTAG_RESET_N     GPIO_NUM_42
+//#define SPI2JTAG_GPIO39      GPIO_NUM_39
+
+#define SPI2JTAG_NJTAG_SWDIO GPIO_NUM_14
 
 #undef PLATFORM_HAS_TRACESWO 
 #define TRACESWO_PIN 13
@@ -59,24 +68,49 @@
 // ON ESP32 we dont have the PORTS, this is dummy value until code is corrected
 #define SWCLK_PORT  0
 
-#define SWDIO_PIN (15)
-#define SWCLK_PIN (4)
+#define SWDIO_PIN 2 // (15)
+#define SWCLK_PIN 3 //(4)
 
 // Allow debugging by toggling the pin
 //#define MY_DEBUG_PIN (12)
 
+#ifndef SPI2JTAG 
+#define SPI2JTAG 1
+#endif
+
 extern uint32_t swd_delay_cnt;
 
+extern esp_err_t spi_master_init(void) ;// spi_device_handle_t *spi);
+extern esp_err_t spi_transfer_data(const uint8_t *tx_data, uint8_t *rx_data, size_t length);
+extern void test_spi();
 
-
+#ifdef SPI2JTAG
+#define gpio_set_val(port, pin, value) do {	\
+        ESP_LOGE("gpio_set_val", "ERROR: SPI2JTAG defined but we are doing gpio_set_level"); \
+	} while (0);
+#else
 #define gpio_set_val(port, pin, value) do {	\
 		gpio_set_level(pin, value);		\
 		/*sdk_os_delay_us(2);	*/	\
 	} while (0);
+#endif
 
 #define gpio_set(port, pin) gpio_set_val(port, pin, 1)
 #define gpio_clear(port, pin) gpio_set_val(port, pin, 0)
+
+#ifdef SPI2JTAG
+static inline char gpio_get_a(unsigned char pin)
+{
+    ESP_LOGE("gpio_get", "ERROR: SPI2JTAG defined but we are doing gpio_get_level");
+    //(void)port;  // prevent unused warning
+    (void)pin;   // prevent unused warning
+    return 0;
+}
+#define gpio_get(port, pin) gpio_get_a(pin)
+#else
 #define gpio_get(port, pin) gpio_get_level(pin)
+#endif
+
 
 // TODO https://esp-idf.readthedocs.io/en/v2.0/api/peripherals/gpio.html#_CPPv216gpio_pull_mode_t
 // GPIO_FLOATING

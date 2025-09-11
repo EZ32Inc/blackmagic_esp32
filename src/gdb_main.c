@@ -140,7 +140,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			ERROR_IF_NO_TARGET();
 			uint8_t gp_regs[target_regs_size(cur_target)];
 			target_regs_read(cur_target, gp_regs);
-			gdb_putpacket(hexify(pbuf, gp_regs, sizeof(gp_regs)), sizeof(gp_regs) * 2U);
+			gdb_putpacket(bmp_hexify(pbuf, gp_regs, sizeof(gp_regs)), sizeof(gp_regs) * 2U);
             print_info("Read Reg");
 			break;
 		}
@@ -157,14 +157,14 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			if (target_mem_read(cur_target, mem, addr, len))
 				gdb_putpacketz("E01");
 			else
-				gdb_putpacket(hexify(pbuf, mem, len), len * 2U);
+				gdb_putpacket(bmp_hexify(pbuf, mem, len), len * 2U);
             print_info("Read Bytes");
 			break;
 		}
 		case 'G': { /* 'G XX': Write general registers */
 			ERROR_IF_NO_TARGET();
 			uint8_t gp_regs[target_regs_size(cur_target)];
-			unhexify(gp_regs, &pbuf[1], sizeof(gp_regs));
+			bmp_unhexi(gp_regs, &pbuf[1], sizeof(gp_regs));
 			target_regs_write(cur_target, gp_regs);
 			gdb_putpacketz("OK");
             print_info("Write Reg");
@@ -182,7 +182,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			}
 			DEBUG_GDB("M packet: addr = %" PRIx32 ", len = %" PRIx32 "\n", addr, len);
 			uint8_t mem[len];
-			unhexify(mem, pbuf + hex, len);
+			bmp_unhexi(mem, pbuf + hex, len);
 			if (target_mem_write(cur_target, addr, mem, len))
 				gdb_putpacketz("E01");
 			else
@@ -283,7 +283,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			uint8_t val[8];
 			size_t s = target_reg_read(cur_target, reg, val, sizeof(val));
 			if (s > 0)
-				gdb_putpacket(hexify(pbuf, val, s), s * 2U);
+				gdb_putpacket(bmp_hexify(pbuf, val, s), s * 2U);
 			else
 				gdb_putpacketz("EFF");
 			break;
@@ -295,7 +295,7 @@ int gdb_main_loop(target_controller_s *tc, bool in_syscall)
 			sscanf(pbuf, "P%" SCNx32 "=%n", &reg, &n);
 			// TODO: FIXME, VLAs considered harmful.
 			uint8_t val[strlen(pbuf + n) / 2U];
-			unhexify(val, pbuf + n, sizeof(val));
+			bmp_unhexi(val, pbuf + n, sizeof(val));
 			if (target_reg_write(cur_target, reg, val, sizeof(val)) > 0)
 				gdb_putpacketz("OK");
 			else
@@ -416,8 +416,8 @@ static void exec_q_rcmd(const char *packet, const size_t length)
 	// This needs replacing with something more sensible.
 	// It should be pinging -Wvla among other things, and it failing is straight-up UB
 	char *data = alloca(datalen + 1U);
-	/* dehexify command */
-	unhexify(data, packet, datalen);
+	/* debmp_hexify command */
+	bmp_unhexi(data, packet, datalen);
 	data[datalen] = 0; /* add terminating null */
 
 	const int c = command_process(cur_target, data);
@@ -428,7 +428,7 @@ static void exec_q_rcmd(const char *packet, const size_t length)
 	else {
 		const char *const response = "Failed\n";
 		const size_t length = strlen(response);
-		gdb_putpacket(hexify(pbuf, response, length), 2 * length);
+		gdb_putpacket(bmp_hexify(pbuf, response, length), 2 * length);
 	}
 }
 
@@ -619,7 +619,7 @@ static void handle_v_packet(char *packet, const size_t plen)
 				continue;
 			}
 			if (isxdigit((int)tok[0]) && isxdigit((int)tok[1])) {
-				unhexify(pcmdline, tok, 2);
+				bmp_unhexi(pcmdline, tok, 2);
 				if ((*pcmdline == ' ') || (*pcmdline == '\\')) {
 					pcmdline[1] = *pcmdline;
 					*pcmdline++ = '\\';

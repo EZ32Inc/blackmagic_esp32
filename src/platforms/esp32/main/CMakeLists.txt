@@ -43,6 +43,7 @@ set(SOURCES
 ../../../remote.c
 platform.c
 gdb_if.c
+spi2jtag.c
 ../../common/swdptap.c
 ../../common/jtagtap.c
 #../../../platforms/native/platform.c

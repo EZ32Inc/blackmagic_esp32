@@ -66,6 +66,7 @@ void jtag_add_device(const uint32_t dev_index, const jtag_dev_s *jtag_dev)
  */
 uint32_t jtag_scan(const uint8_t *irlens)
 {
+    return 0;
 	target_list_free();
 
 	jtag_dev_count = 0;

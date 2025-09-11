@@ -42,6 +42,7 @@ set(SOURCES
 ./src/gdb_packet.c
 ./src/remote.c
 ./src/platforms/esp32/main/platform.c
+./src/platforms/esp32/main/spi2jtag.c
 ./src/platforms/esp32/main/gdb_if.c
 #./src/platforms/esp32/main/main.c 
 ./src/platforms/common/swdptap.c

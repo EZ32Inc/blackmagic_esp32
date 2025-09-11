@@ -117,7 +117,7 @@ uint32_t remote_max_frequency_get(void)
 	if (s < 1 || construct[0] == REMOTE_RESP_ERR)
 		return FREQ_FIXED;
 	uint32_t freq;
-	unhexify(&freq, construct + 1, 4);
+	bmp_unhexi(&freq, construct + 1, 4);
 	return freq;
 }
 
@@ -154,7 +154,7 @@ static uint32_t remote_adiv5_dp_read(adiv5_debug_port_s *dp, uint16_t addr)
 	if (s < 1 || construct[0] == REMOTE_RESP_ERR)
 		DEBUG_WARN("%s error %d\n", __func__, s);
 	uint32_t dest;
-	unhexify(&dest, construct + 1, 4);
+	bmp_unhexi(&dest, construct + 1, 4);
 	DEBUG_PROBE("dp_read addr %04x: %08" PRIx32 "\n", dest);
 	return dest;
 }
@@ -169,7 +169,7 @@ static uint32_t remote_adiv5_low_access(adiv5_debug_port_s *dp, uint8_t RnW, uin
 	if (s < 1 || construct[0] == REMOTE_RESP_ERR)
 		DEBUG_WARN("%s error %d\n", __func__, s);
 	uint32_t dest;
-	unhexify(&dest, construct + 1, 4);
+	bmp_unhexi(&dest, construct + 1, 4);
 	return dest;
 }
 
@@ -182,7 +182,7 @@ static uint32_t remote_adiv5_ap_read(adiv5_access_port_s *ap, uint16_t addr)
 	if (s < 1 || construct[0] == REMOTE_RESP_ERR)
 		DEBUG_WARN("%s error %d\n", __func__, s);
 	uint32_t dest;
-	unhexify(&dest, construct + 1, 4);
+	bmp_unhexi(&dest, construct + 1, 4);
 	return dest;
 }
 
@@ -210,7 +210,7 @@ static void remote_ap_mem_read(adiv5_access_port_s *ap, void *dest, uint32_t src
 		platform_buffer_write((uint8_t *)construct, s);
 		s = platform_buffer_read((uint8_t *)construct, REMOTE_MAX_MSG_SIZE);
 		if (s > 0 && construct[0] == REMOTE_RESP_OK) {
-			unhexify(dest + offset, (const char *)&construct[1], count);
+			bmp_unhexi(dest + offset, (const char *)&construct[1], count);
 			continue;
 		}
 		if (construct[0] == REMOTE_RESP_ERR) {
@@ -239,7 +239,7 @@ static void remote_ap_mem_write_sized(
 		int s = snprintf(construct, REMOTE_MAX_MSG_SIZE, REMOTE_AP_MEM_WRITE_SIZED_STR, ap->dp->dp_jd_index, ap->apsel,
 			ap->csw, align, dest + offset, count);
 		assert(s > 0);
-		hexify(construct + s, data + offset, count);
+		bmp_hexify(construct + s, data + offset, count);
 		const size_t hex_length = s + (count * 2U);
 		construct[hex_length] = REMOTE_EOM;
 		construct[hex_length + 1U] = '\0';

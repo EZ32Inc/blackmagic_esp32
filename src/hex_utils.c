@@ -20,13 +20,12 @@
 
 /* Convenience functions to convert to/from ascii strings of hex digits. */
 
-/* conflict with openocd
 #include "general.h"
 #include "hex_utils.h"
 
 static const char hexdigits[] = "0123456789abcdef";
 
-char *hexify(char *const hex, const void *const buf, const size_t size)
+char *bmp_hexify(char *const hex, const void *const buf, const size_t size)
 {
 	char *dst = hex;
 	const uint8_t *const src = buf;
@@ -50,11 +49,10 @@ static uint8_t unhex_digit(const char hex)
 	return tmp;
 }
 
-char *unhexify(void *const buf, const char *hex, const size_t size)
+char *bmp_unhexi(void *const buf, const char *hex, const size_t size)
 {
 	uint8_t *const dst = buf;
 	for (size_t idx = 0; idx < size; ++idx, hex += 2U)
 		dst[idx] = (unhex_digit(hex[0]) << 4U) | unhex_digit(hex[1]);
 	return buf;
 }
-*/

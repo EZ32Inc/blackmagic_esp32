@@ -28,6 +28,10 @@
 #include "platform.h"
 #endif
 
+//#ifndef SPI2JTAG
+//#define SPI2JTAG 1
+//#endif
+#include "../../../platforms/esp32/main/spi2jtag.h"
 #define ADIV5_APnDP     0x100U
 #define ADIV5_DP_REG(x) (x)
 #define ADIV5_AP_REG(x) (ADIV5_APnDP | (x))
@@ -371,12 +375,18 @@ void adiv5_dp_write(adiv5_debug_port_s *dp, uint16_t addr, uint32_t value);
 
 static inline uint32_t adiv5_dp_recoverable_access(adiv5_debug_port_s *dp, uint8_t RnW, uint16_t addr, uint32_t value)
 {
+    //printf("aliDbg: in adiv5_dp_recoverable_access() to do dp->low_access()\n");
 	const uint32_t result = dp->low_access(dp, RnW, addr, value);
 	/* If the access results in the no-response response, retry after clearing the error state */
 	if (dp->fault == SWDP_ACK_NO_RESPONSE) {
 		uint32_t response;
 		/* Wait the response period, then clear the error */
+        //printf("aliDbg: in adiv5_dp_recoverable_access() to do dp->seq_in_parity()\n");
+#ifdef SPI2JTAG
+		spi_dp_seq_in_parity_32bit(&response);
+#else
 		dp->seq_in_parity(&response, 32);
+#endif
 		DEBUG_WARN("Recovering and re-trying access\n");
 		dp->error(dp, true);
 		return dp->low_access(dp, RnW, addr, value);

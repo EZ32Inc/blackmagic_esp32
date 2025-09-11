@@ -244,7 +244,7 @@ void gdb_out(const char *const buf)
 	if (!hexdata)
 		return;
 
-	hexify(hexdata, buf, buf_len);
+	bmp_hexify(hexdata, buf, buf_len);
 	gdb_putpacket2("O", 1, hexdata, 2U * buf_len);
 	free(hexdata);
 }

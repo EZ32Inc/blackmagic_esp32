@@ -55,7 +55,7 @@ static void remote_send_buf(uint8_t *buffer, size_t len)
 	uint8_t *p = buffer;
 	char hex[2];
 	do {
-		hexify(hex, (const void *)p++, 1);
+		bmp_hexify(hex, (const void *)p++, 1);
 
 		gdb_if_putchar(hex[0], 0);
 		gdb_if_putchar(hex[1], 0);
@@ -429,7 +429,7 @@ static void remote_packet_process_high_level(unsigned i, char *packet)
 			break;
 		}
 		/* Read as stream of hexified bytes*/
-		unhexify(src, packet, len);
+		bmp_unhexi(src, packet, len);
 		adiv5_mem_write_sized(&remote_ap, dest, src, len, align);
 		if (remote_ap.dp->fault) {
 			/* Errors handles on hosted side.*/

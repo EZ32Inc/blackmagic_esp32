@@ -23,7 +23,7 @@
 
 #include <stddef.h>
 
-char *hexify(char *hex, const void *buf, size_t size);
-char *unhexify(void *buf, const char *hex, size_t size);
+char *bmp_hexify(char *hex, const void *buf, size_t size);
+char *bmp_unhexi(void *buf, const char *hex, size_t size);
 
 #endif /* INCLUDE_HEX_UTILS_H */

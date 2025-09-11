@@ -29,11 +29,13 @@
 #include "target.h"
 #include "target_internal.h"
 
+#include "../../../platforms/esp32/main/spi2jtag.h"
+
 uint8_t make_packet_request(uint8_t RnW, uint16_t addr)
 {
 	bool APnDP = addr & ADIV5_APnDP;
 
-	addr &= 0xffU;
+	//addr &= 0xffU;
 
 	uint8_t request = 0x81U; /* Park and Startbit */
 
@@ -43,7 +45,7 @@ uint8_t make_packet_request(uint8_t RnW, uint16_t addr)
 		request ^= 0x24U;
 
 	addr &= 0xcU;
-	request |= (addr << 1U) & 0x18U;
+	request |= (addr << 1U) & 0x18U; //at bit [4:3]
 	if (addr == 4U || addr == 8U)
 		request ^= 0x20U;
 
@@ -54,29 +56,46 @@ uint8_t make_packet_request(uint8_t RnW, uint16_t addr)
 
 static void dp_line_reset(adiv5_debug_port_s *dp)
 {
+#ifdef SPI2JTAG
+    (void)dp;
+    spi_dp_line_reset();
+#else
 	dp->seq_out(0xffffffffU, 32U);
 	dp->seq_out(0x0fffffffU, 32U);
+#endif
 }
 
 bool firmware_dp_low_write(adiv5_debug_port_s *dp, const uint16_t addr, const uint32_t data)
 {
+#ifdef SPI2JTAG
+    (void)dp;
+    return spi_firmware_dp_low_write(addr,data);
+#else
 	const uint8_t request = make_packet_request(ADIV5_LOW_WRITE, addr);
 	dp->seq_out(request, 8);
 	const uint8_t res = dp->seq_in(3);
 	dp->seq_out_parity(data, 32);
 	dp->seq_out(0, 8);
+    //printf("low_wr ACK=%d\n",res);
 	return res != SWDP_ACK_OK;
+#endif
 }
 
 uint32_t firmware_dp_low_read(adiv5_debug_port_s *dp, const uint16_t addr)
 {
+#ifdef SPI2JTAG
+    (void)dp;
+    return spi_firmware_dp_low_read(addr);
+#else
 	const uint8_t request = make_packet_request(ADIV5_LOW_READ, addr);
 	dp->seq_out(request, 8);
 	const uint8_t res = dp->seq_in(3);
 	uint32_t data = 0;
 	dp->seq_in_parity(&data, 32);
 	dp->seq_out(0, 8U);
+    //printf("low_rd ACK=%d\n",res);
 	return res == SWDP_ACK_OK ? data : 0;
+#endif
 }
 
 /* Try first the dormant to SWD procedure.
@@ -102,6 +121,18 @@ uint32_t adiv5_swdp_scan(uint32_t targetid)
 		return 0;
 
 	platform_target_clk_output_enable(true);
+#ifdef SPI2JTAG
+    ESP_LOGD("adiv5_swdp","DORMANT-> SWD sequence");
+    spi_dp_wr32bit(0xffffffff);
+    spi_dp_wr32bit(0xffffffff);
+
+    spi_dp_wr32bit(0x6209f392);
+    spi_dp_wr32bit(0x86852d95);
+    spi_dp_wr32bit(0xe3ddafe9);
+    spi_dp_wr32bit(0x19bc0ea2);
+
+    spi_dp_wr_nbit(0x1a0, 12);
+#else
 	/* DORMANT-> SWD sequence*/
 	initial_dp->seq_out(0xffffffff, 32);
 	initial_dp->seq_out(0xffffffff, 32);
@@ -114,6 +145,7 @@ uint32_t adiv5_swdp_scan(uint32_t targetid)
 	 * 0x1a Arm CoreSight SW-DP activation sequence
 	 * 20 bits start of reset another reset sequence*/
 	initial_dp->seq_out(0x1a0, 12);
+#endif
 
 	bool scan_multidrop = true;
 	volatile uint32_t dp_targetid = targetid;
@@ -123,17 +155,25 @@ uint32_t adiv5_swdp_scan(uint32_t targetid)
 
 		scan_multidrop = false;
 
+        ESP_LOGD("adiv5_swdp","Do dp_line_reset");
 		dp_line_reset(initial_dp);
 
 		volatile uint32_t dp_dpidr = 0;
 		TRY_CATCH (e, EXCEPTION_ALL) {
+            ESP_LOGD("adiv5_swdp","Do dp_read()\n");
 			dp_dpidr = initial_dp->dp_read(initial_dp, ADIV5_DP_DPIDR);
 		}
 		if (e.type || initial_dp->fault) {
 			DEBUG_WARN("Trying old JTAG to SWD sequence\n");
+#ifdef SPI2JTAG
+            spi_dp_wr32bit(0xffffffff);
+            spi_dp_wr32bit(0xffffffff);
+            spi_dp_wr_nbit(0xe79e, 16);
+#else
 			initial_dp->seq_out(0xffffffff, 32);
 			initial_dp->seq_out(0xffffffff, 32);
 			initial_dp->seq_out(0xe79e, 16); /* 0b0111100111100111 */
+#endif
 
 			dp_line_reset(initial_dp);
 
@@ -257,9 +297,20 @@ uint32_t firmware_swdp_low_access(adiv5_debug_port_s *dp, const uint8_t RnW, con
 	uint8_t ack = SWDP_ACK_WAIT;
 	platform_timeout_s timeout;
 	platform_timeout_set(&timeout, 250);
+#ifdef SPI2JTAG
+    bool last_time_rd = false;
+    ESP_LOGD("adiv5_swdp.c", "firmware_swdp_low_access");
+#endif
 	do {
+#ifdef SPI2JTAG
+        ack = spi_request_seq_in(request,last_time_rd);
+        last_time_rd = true;
+#else
 		dp->seq_out(request, 8);
 		ack = dp->seq_in(3);
+#endif
+        //printf("low_access ACK=%d\n",ack);
+#if 0
 		if (ack == SWDP_ACK_FAULT) {
 			DEBUG_WARN("SWD access resulted in fault, retrying\n");
 			/* On fault, abort the request and repeat */
@@ -268,8 +319,10 @@ uint32_t firmware_swdp_low_access(adiv5_debug_port_s *dp, const uint8_t RnW, con
 				ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
 					ADIV5_DP_ABORT_STKCMPCLR);
 		}
+#endif
 	} while ((ack == SWDP_ACK_WAIT || ack == SWDP_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
 
+    //printf("low_access ACK=%d\n",ack);
 	if (ack == SWDP_ACK_WAIT) {
 		DEBUG_WARN("SWD access resulted in wait, aborting\n");
 		dp->abort(dp, ADIV5_DP_ABORT_DAPABORT);
@@ -294,6 +347,16 @@ uint32_t firmware_swdp_low_access(adiv5_debug_port_s *dp, const uint8_t RnW, con
 		raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
 	}
 
+#ifdef SPI2JTAG
+	if (RnW) {
+		if (spi_dp_seq_in_parity_32bit(&response)) { /* Give up on parity error */
+			dp->fault = 1;
+			DEBUG_WARN("SWD access resulted in parity error\n");
+			raise_exception(EXCEPTION_ERROR, "SWD parity error");
+		}
+	} else
+		spi_dp_seq_out_parity_32bit(value);
+#else
 	if (RnW) {
 		if (dp->seq_in_parity(&response, 32)) { /* Give up on parity error */
 			dp->fault = 1;
@@ -302,6 +365,7 @@ uint32_t firmware_swdp_low_access(adiv5_debug_port_s *dp, const uint8_t RnW, con
 		}
 	} else
 		dp->seq_out_parity(value, 32);
+#endif
 
 	/* ARM Debug Interface Architecture Specification ADIv5.0 to ADIv5.2
 	 * tells to clock the data through SW-DP to either :
@@ -312,7 +376,11 @@ uint32_t firmware_swdp_low_access(adiv5_debug_port_s *dp, const uint8_t RnW, con
 	 * Implement last option to favour correctness over
 	 *   slight speed decrease
 	 */
+#ifdef SPI2JTAG
+    spi_dp_wr_nbit(0,8);
+#else
 	dp->seq_out(0, 8);
+#endif
 
 	return response;
 }
