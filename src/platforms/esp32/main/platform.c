@@ -36,14 +36,16 @@
 
 //#include "esp/uart.h"
 
-//#include "FreeRTOS.h"
 //#include "task.h"
 //#include "espressif/esp_wifi.h"
 //#include "ssid_config.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/spi_master.h"
 
 #include "spi2jtag.h"
+
+extern esp_err_t spi_master_init(void);
 
 uint32_t swd_delay_cnt = 0;
 
@@ -80,10 +82,8 @@ uint32_t platform_max_frequency_get(void)
 	return ret;
 }
 
-
-
-//  | (1<<MY_DEBUG_PIN)
-#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | (1ULL<<TMS_PIN) | (1ULL<<TDI_PIN) | (1ULL<<TDO_PIN) | (1ULL<<TCK_PIN))
+//#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | (1ULL<<TMS_PIN) | (1ULL<<TDI_PIN) | (1ULL<<TDO_PIN) | (1ULL<<TCK_PIN))
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<PIN_RESET_N) | (1ULL<<SPI2JTAG_NJTAG_SWDIO) | (1ULL<<PIN_SPI_OR_GPIO))
 
 void pins_init() {
 
@@ -93,8 +93,8 @@ void pins_init() {
     //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
     //bit mask of the pins that you want to set
-    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL
-        | (1ULL << PIN_RESET_N) | (1ULL << SPI2JTAG_NJTAG_SWDIO) | (1ULL << PIN_SPI_OR_GPIO) | (1ULL << JTAG_SEL_N_PIN);
+    io_conf.pin_bit_mask = GPIO_OUTPUT_PIN_SEL;
+//        | (1ULL << PIN_RESET_N) | (1ULL << SPI2JTAG_NJTAG_SWDIO) | (1ULL << PIN_SPI_OR_GPIO) | (1ULL << JTAG_SEL_N_PIN);
     //disable pull-down mode
     io_conf.pull_down_en = 0;
     //disable pull-up mode
@@ -102,43 +102,38 @@ void pins_init() {
     //configure GPIO with the given settings
     gpio_config(&io_conf);
 
-    //set related GPIO for SWDIO
-    ESP_LOGI("ESP32_BMP", "Set JTAG_SEL_N_PIN pin-%d to 1 for FPGA JTAG PINs used as GPIO and not as JTAG PINS",JTAG_SEL_N_PIN);
-    gpio_set_level(JTAG_SEL_N_PIN, 1);
-
     //TODO: To remove this here and also in FPGA RTL code. Will use SPI only and not GPIO bitbang which is only for test purpose
-    ESP_LOGI("ESP32_BMP", "Set PIN_SPI_OR_GPIO pin-%d to 1 for SPI and not GPIO bitbang", PIN_SPI_OR_GPIO);
+    ESP_LOGI("ESP32_BMP", "Set PIN_SPI_OR_GPIO GPIO-%d to 1 for SPI and not GPIO bitbang", PIN_SPI_OR_GPIO);
     gpio_set_level(PIN_SPI_OR_GPIO, 1);//SPI and not GPIO bitbang
 
-    ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO pin-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
+    ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO GPIO-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
     gpio_set_level(PIN_SPI_OR_GPIO, 1);
 
     //reset on-board Gowin FPGA
-    ESP_LOGI("ESP32_BMP", "Use PIN_SPI_OR_GPIO pin-%d to reset on-board Gowin FPGA: Set 0, wait then set to 1", PIN_RESET_N);
+    ESP_LOGI("ESP32_BMP", "Use PIN_RESET_N pin-%d to reset on-board Gowin FPGA: Set 0, wait then set to 1", PIN_RESET_N);
     gpio_set_level(PIN_RESET_N, 0);
     for(int i =0;i<256;++i) {} //delay some time
     gpio_set_level(PIN_RESET_N, 1);
 
 }
-
+extern spi_device_handle_t gbl_spi_h1;
 void platform_init()
 {
 	pins_init();
 
 	//assert(gdb_if_init() == 0);
 	//gdb_if_init();
+
 #if 1
-    esp_err_t ret_spi = spi_master_init();
-    if (ret_spi != ESP_OK) {
-        ESP_LOGE("ESP32_BMP", "SPI init failed: %s", esp_err_to_name(ret_spi));
-        //return;
+    esp_err_t ret_spi = ESP_OK;
+    if(gbl_spi_h1 == NULL){
+        ret_spi = spi_master_init();
+        if (ret_spi != ESP_OK) {
+            ESP_LOGE("ESP32_BMP", "SPI init failed: %s", esp_err_to_name(ret_spi));
+            //return;
+        }
     }
     else{
-        ESP_LOGI("ESP32_BMP", "SPI init OK!");
-
-        //ESP_LOGI("ESP32_BMP", "To run test_spi()!");
-        //test_spi();
-        
         ESP_LOGI("ESP32_BMP", "To run spi2jtag_test()");
         spi2jtag_test();
     }

@@ -3,11 +3,15 @@
 #include "timing.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "driver/spi_master.h"
+#include "freertos/semphr.h"
 
 #include "general.h"
 #include "spi2jtag.h"
 
 #include "adiv5.h"
+
+extern spi_device_handle_t gbl_spi_h1;
 
 uint8_t reverse_bits8(uint8_t v)
 {
@@ -284,20 +288,29 @@ uint8_t spi_request_seq_in(uint8_t request, bool last_time_rd)
     ESP_LOGD("spi_request_seq_in", "ack=0x%02x last_time_rd=%d", ack, last_time_rd? 1 :0);
     return ack;
 }
+#define my_ICE_SPI_CS_PIN 21
+
 int spi2jtag_test(){
     int ret = 0;
+    
+    if (spi_device_acquire_bus(gbl_spi_h1, portMAX_DELAY) != ESP_OK) {
+        ESP_LOGE("FPGA_LOADER", "Failed to acquire SPI bus");
+        return ret;
+    }
+
+    gpio_set_level(my_ICE_SPI_CS_PIN,0);
 #if 0
     spi_dp_line_reset();
 
     ret = (int)spi_firmware_dp_low_write(0x10c,0x11223344);
     ret = (int)spi_firmware_dp_low_read(0x10c);
 #endif
-#if 0
+#if 1
     uint8_t tx[16];
     uint8_t rx[16];
     uint8_t i=0;
 
-    ESP_LOGD("SPI2JTAG_TEST", "test01 enerate 21 SWDCLKs and write");
+    ESP_LOGI("SPI2JTAG_TEST", "test01 enerate 21 SWDCLKs and write");
     tx[i++] = (20 | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
     tx[i++] = 0xff;
     tx[i++] = 0x55;
@@ -400,6 +413,8 @@ int spi2jtag_test(){
     spi_transfer_data(tx,rx,i);
 */
 #endif
+    gpio_set_level(my_ICE_SPI_CS_PIN,1);
+    spi_device_release_bus(gbl_spi_h1);
     return ret;
 }
 

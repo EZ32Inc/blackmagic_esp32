@@ -58,8 +58,6 @@
 //#define SPI2JTAG_RESET_N     GPIO_NUM_42
 //#define SPI2JTAG_GPIO39      GPIO_NUM_39
 
-#define SPI2JTAG_NJTAG_SWDIO GPIO_NUM_14
-
 #undef PLATFORM_HAS_TRACESWO 
 #define TRACESWO_PIN 13
 // Workaround for driver
