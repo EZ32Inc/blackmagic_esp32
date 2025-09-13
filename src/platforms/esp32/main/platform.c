@@ -109,8 +109,8 @@ void pins_init() {
     ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO GPIO-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
     gpio_set_level(PIN_SPI_OR_GPIO, 1);
 
-    //reset on-board Gowin FPGA
-    ESP_LOGI("ESP32_BMP", "Use PIN_RESET_N pin-%d to reset on-board Gowin FPGA: Set 0, wait then set to 1", PIN_RESET_N);
+    //reset on-board FPGA
+    ESP_LOGI("ESP32_BMP", "Use PIN_RESET_N pin-%d to reset on-board ICE40UP5k FPGA: Set 0, wait then set to 1", PIN_RESET_N);
     gpio_set_level(PIN_RESET_N, 0);
     for(int i =0;i<256;++i) {} //delay some time
     gpio_set_level(PIN_RESET_N, 1);
