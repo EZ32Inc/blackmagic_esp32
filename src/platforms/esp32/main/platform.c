@@ -134,8 +134,8 @@ void platform_init()
         }
     }
     else{
-        ESP_LOGI("ESP32_BMP", "To run spi2jtag_test()");
-        spi2jtag_test();
+//        ESP_LOGI("ESP32_BMP", "To run spi2jtag_test()");
+//        spi2jtag_test();
     }
 
 #endif
