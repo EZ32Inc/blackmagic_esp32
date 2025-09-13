@@ -288,8 +288,8 @@ uint8_t spi_request_seq_in(uint8_t request, bool last_time_rd)
     ESP_LOGD("spi_request_seq_in", "ack=0x%02x last_time_rd=%d", ack, last_time_rd? 1 :0);
     return ack;
 }
-#define my_ICE_SPI_CS_PIN 21
 
+//#define my_ICE_SPI_CS_PIN 21
 int spi2jtag_test(){
     int ret = 0;
     
@@ -298,7 +298,7 @@ int spi2jtag_test(){
         return ret;
     }
 
-    gpio_set_level(my_ICE_SPI_CS_PIN,0);
+    //gpio_set_level(my_ICE_SPI_CS_PIN,0);
 #if 0
     spi_dp_line_reset();
 
@@ -413,7 +413,7 @@ int spi2jtag_test(){
     spi_transfer_data(tx,rx,i);
 */
 #endif
-    gpio_set_level(my_ICE_SPI_CS_PIN,1);
+    //gpio_set_level(my_ICE_SPI_CS_PIN,1);
     spi_device_release_bus(gbl_spi_h1);
     return ret;
 }

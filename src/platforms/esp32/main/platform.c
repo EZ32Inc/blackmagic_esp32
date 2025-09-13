@@ -107,7 +107,7 @@ void pins_init() {
     gpio_set_level(PIN_SPI_OR_GPIO, 1);//SPI and not GPIO bitbang
 
     ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO GPIO-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
-    gpio_set_level(PIN_SPI_OR_GPIO, 1);
+    gpio_set_level(SPI2JTAG_NJTAG_SWDIO, 1);
 
     //reset on-board FPGA
     ESP_LOGI("ESP32_BMP", "Use PIN_RESET_N pin-%d to reset on-board ICE40UP5k FPGA: Set 0, wait then set to 1", PIN_RESET_N);
