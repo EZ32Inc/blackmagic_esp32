@@ -11,7 +11,7 @@
 
 #include "adiv5.h"
 
-extern spi_device_handle_t gbl_spi_h1;
+//extern spi_device_handle_t gbl_spi_h1;
 
 uint8_t reverse_bits8(uint8_t v)
 {
@@ -293,10 +293,10 @@ uint8_t spi_request_seq_in(uint8_t request, bool last_time_rd)
 int spi2jtag_test(){
     int ret = 0;
     
-    if (spi_device_acquire_bus(gbl_spi_h1, portMAX_DELAY) != ESP_OK) {
-        ESP_LOGE("FPGA_LOADER", "Failed to acquire SPI bus");
-        return ret;
-    }
+    //if (spi_device_acquire_bus(gbl_spi_h1, portMAX_DELAY) != ESP_OK) {
+    //    ESP_LOGE("FPGA_LOADER", "Failed to acquire SPI bus");
+    //    return ret;
+    //}
 
     //gpio_set_level(my_ICE_SPI_CS_PIN,0);
 #if 0
@@ -413,8 +413,7 @@ int spi2jtag_test(){
     spi_transfer_data(tx,rx,i);
 */
 #endif
-    //gpio_set_level(my_ICE_SPI_CS_PIN,1);
-    spi_device_release_bus(gbl_spi_h1);
+    //spi_device_release_bus(gbl_spi_h1);
     return ret;
 }
 
