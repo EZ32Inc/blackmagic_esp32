@@ -83,7 +83,7 @@ void spi_dp_wr_nbit(uint32_t data_in, uint8_t nbit)
         data = data<<8;
         j += 8;
     }
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 }
 void spi_dp_wr32bit(uint32_t data_in)
 {
@@ -100,7 +100,7 @@ void spi_dp_wr32bit(uint32_t data_in)
     tx[i++] = data>>16;
     tx[i++] = data>>8;
     tx[i++] = data;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 }
 bool spi_dp_seq_in_parity_32bit(uint32_t *data)
 {
@@ -109,7 +109,7 @@ bool spi_dp_seq_in_parity_32bit(uint32_t *data)
 
     tx[0] = 33 & (~FLAG_NORMAL_46B); //34 bit and the very last biy bit 0 is TRN
     ESP_LOGD("seq_in_parity_32bit", "tx[0]=0x%02x", reverse_bits8(tx[0]));
-    spi_transfer_data(tx,rx,6);
+    spi_device2_transfer_data(tx,rx,6);
 
     //extract data
     uint32_t bits=0;
@@ -140,7 +140,7 @@ void spi_dp_seq_out_parity_32bit(uint32_t data_in)
     tx[i++] = data>>9;
     tx[i++] = data>>1;
     tx[i++] = ((data & 1)<<7) | ((__builtin_popcount(data) & 1)<<6); //last bit of data + parity
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 }
 void spi_dp_line_reset()//adiv5_debug_port_s *dp)
 {
@@ -157,7 +157,7 @@ void spi_dp_line_reset()//adiv5_debug_port_s *dp)
     tx[i++] = (63 | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
     for(int i =0;i<8;++i)
         tx[i++] = 0xff;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 #endif
 }
 bool spi_firmware_dp_low_write(/*adiv5_debug_port_s *dp, */const uint16_t addr, const uint32_t data_in)
@@ -190,7 +190,7 @@ bool spi_firmware_dp_low_write(/*adiv5_debug_port_s *dp, */const uint16_t addr, 
     tx[i++] = data>>7;
     tx[i++] = (data&0xfe) | parity;
     tx[i++] = 0;//extra 8 bit
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
     ESP_LOGD("spi_firmware_dp_low_write","tx=0x%02x %02x %02x %02x %02x %02x %02x",
             tx[0],tx[1], tx[2], tx[3], tx[4], tx[5], tx[6]);
     ESP_LOGD("spi_firmware_dp_low_write","rx=0x%02x %02x %02x %02x %02x %02x %02x",
@@ -233,7 +233,7 @@ uint32_t spi_firmware_dp_low_read(/*adiv5_debug_port_s *dp,*/ const uint16_t add
     tx[i++] = 0;//data>>7;
     tx[i++] = 0;//(data&0xfe) | parity;
     tx[i++] = 0;//extra 8 bit
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
     ESP_LOGD("spi_firmware_dp_low_read","tx=0x%02x %02x %02x %02x %02x %02x %02x",
             tx[0],tx[1], tx[2], tx[3], tx[4], tx[5], tx[6]);
     ESP_LOGD("spi_firmware_dp_low_read","rx=0x%02x %02x %02x %02x %02x %02x %02x",
@@ -275,7 +275,7 @@ uint8_t spi_request_seq_in(uint8_t request, bool last_time_rd)
         tx[1] |= FLAG_SWD_EN_DISABLE;
     }
 
-    spi_transfer_data(tx,rx,2);
+    spi_device2_transfer_data(tx,rx,2);
 
     //get ack from rx
     uint8_t ack = rx[1];
@@ -315,7 +315,7 @@ int spi2jtag_test(){
     tx[i++] = 0xff;
     tx[i++] = 0x55;
     tx[i++] = 0x0f;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test02 generate 35 SWDCLKs and read, last bit is TRN");
     i=0;
@@ -325,25 +325,25 @@ int spi2jtag_test(){
     tx[i++] = 0xaa;
     tx[i++] = 0x0f;
     tx[i++] = 0xf0;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test03 begin, generate 12 SWDCLKs, RD next");
     i=0;
     tx[i++] = FLAG_NORMAL_46B;
     tx[i++] = 0 | FLAG_SWD_EN_DISABLE;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test04 begin, generate 13 SWDCLKs, RD next");
     i=0;
     tx[i++] = FLAG_NORMAL_46B | FLAG_1STBIT_TRN;
     tx[i++] = 0x0 | (FLAG_SWD_EN_DISABLE>>1);
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test05 begin, generate 13 SWDCLKs, WR next");
     i=0;
     tx[i++] = FLAG_NORMAL_46B | FLAG_1STBIT_TRN;
     tx[i++] = 0x0 | (FLAG_SWD_EN_DISABLE>>1);
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test06 begin, 34 SWDCLKs and write!");
     i=0;
@@ -353,13 +353,13 @@ int spi2jtag_test(){
     tx[i++] = 0xaa;
     tx[i++] = 0x0f;
     tx[i++] = 0xf0;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test07 begin,  generate 12 SWDCLKs");
     i=0;
     tx[i++] = FLAG_NORMAL_46B;
     tx[i++] = 0x0 | FLAG_SWD_EN_DISABLE;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test08 begin, 34 SWDCLKs and read!");
     i=0;
@@ -369,13 +369,13 @@ int spi2jtag_test(){
     tx[i++] = 0xaa;
     tx[i++] = 0x0f;
     tx[i++] = 0xf0;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test09 begin, generate 12 SWDCLKs, RD next, with extra 8-bit");
     i=0;
     tx[i++] = FLAG_NORMAL_46B | FLAG_SWD_RD_NWR;
     tx[i++] = (0x0 | EXTRA_8BIT_FLAG) &(~FLAG_SWD_EN_DISABLE);
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test10 begin, 34+8 SWDCLKs and read!");
     i=0;
@@ -384,13 +384,13 @@ int spi2jtag_test(){
     tx[i++] = 0xaa;
     tx[i++] = 0x0f;
     tx[i++] = 0xf0;
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test11 begin, generate 12 SWDCLKs, WR next, with extra 8-bit");
     i=0;
     tx[i++] = FLAG_NORMAL_46B & (~FLAG_SWD_RD_NWR);
     tx[i++] = (0x0 | EXTRA_8BIT_FLAG) &(~FLAG_SWD_EN_DISABLE);
-    spi_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx,rx,i);
 
     ESP_LOGD("SPI2JTAG_TEST", "test12 begin, 34+8 SWDCLKs and write!");
     i=0;
@@ -399,19 +399,7 @@ int spi2jtag_test(){
     tx[i++] = 0xaa;
     tx[i++] = 0x0f;
     tx[i++] = 0xf0;
-    spi_transfer_data(tx,rx,i);
-/*
-    ESP_LOGD("SPI2JTAG_TEST", "test13 begin,");
-    i=0;
-    tx[i++] = ;
-    tx[i++] = ;
-    tx[i++] = ;
-    tx[i++] = ;
-    tx[i++] = ;
-    tx[i++] = ;
-    tx[i++] = ;
-    spi_transfer_data(tx,rx,i);
-*/
+    spi_device2_transfer_data(tx,rx,i);
 #endif
     //spi_device_release_bus(gbl_spi_h1);
     return ret;

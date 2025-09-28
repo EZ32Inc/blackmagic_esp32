@@ -78,8 +78,6 @@
 
 extern uint32_t swd_delay_cnt;
 
-extern esp_err_t spi_master_init(void) ;// spi_device_handle_t *spi);
-extern esp_err_t spi_transfer_data(const uint8_t *tx_data, uint8_t *rx_data, size_t length);
 extern void test_spi();
 
 #ifdef SPI2JTAG
