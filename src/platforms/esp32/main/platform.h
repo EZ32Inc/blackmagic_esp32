@@ -41,7 +41,7 @@
 #include "timing.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
-#include "../../../../../../main/common.h"
+#include "../../../../../../main/esp32jtag_common.h"
 
 #include <freertos/FreeRTOS.h>
 

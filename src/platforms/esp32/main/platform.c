@@ -83,7 +83,8 @@ uint32_t platform_max_frequency_get(void)
 }
 
 //#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | (1ULL<<TMS_PIN) | (1ULL<<TDI_PIN) | (1ULL<<TDO_PIN) | (1ULL<<TCK_PIN))
-#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<PIN_RESET_N) | (1ULL<<SPI2JTAG_NJTAG_SWDIO) | (1ULL<<PIN_SPI_OR_GPIO))
+//#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<PIN_RESET_N) | (1ULL<<SPI2JTAG_NJTAG_SWDIO) | (1ULL<<PIN_SPI_OR_GPIO))
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<PIN_RESET_N) | (1ULL<<PIN_SPI_OR_GPIO))
 
 void pins_init() {
 
@@ -106,8 +107,8 @@ void pins_init() {
     ESP_LOGI("ESP32_BMP", "Set PIN_SPI_OR_GPIO GPIO-%d to 1 for SPI and not GPIO bitbang", PIN_SPI_OR_GPIO);
     gpio_set_level(PIN_SPI_OR_GPIO, 1);//SPI and not GPIO bitbang
 
-    ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO GPIO-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
-    gpio_set_level(SPI2JTAG_NJTAG_SWDIO, 1);
+    //ESP_LOGI("ESP32_BMP", "Set SPI2JTAG_NJTAG_SWDIO GPIO-%d to 1 to select SWDIO not JTAG", SPI2JTAG_NJTAG_SWDIO);
+    //gpio_set_level(SPI2JTAG_NJTAG_SWDIO, 1);
 
     //reset on-board FPGA
     ESP_LOGI("ESP32_BMP", "Use PIN_RESET_N pin-%d to reset on-board ICE40UP5k FPGA: Set 0, wait then set to 1", PIN_RESET_N);
