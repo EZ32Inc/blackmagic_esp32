@@ -125,7 +125,7 @@ void platform_init()
 	//assert(gdb_if_init() == 0);
 	//gdb_if_init();
 
-#if 1
+#if 0 //do it in main/main.c
     esp_err_t ret_spi = ESP_OK;
     if(gbl_spi_h1 == NULL){
         ret_spi = spi_master_init();
