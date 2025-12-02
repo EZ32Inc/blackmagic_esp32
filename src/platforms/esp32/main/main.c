@@ -47,6 +47,19 @@
 
 #include "platform.h"
 
+#include "general.h"
+#include "platform.h"
+#include "gdb_if.h"
+#include "gdb_main.h"
+#include "target.h"
+#include "exception.h"
+#include "gdb_packet.h"
+#include "morse.h"
+#include "command.h"
+#ifdef ENABLE_RTT
+#include "rtt.h"
+#endif
+
 unsigned short gdb_port = 4242; //same as stlink st-util GDB
 
 //extern int g_str_changed;
@@ -79,6 +92,64 @@ static EventGroupHandle_t wifi_event_group;
 static const char *TAG = "BMP";
 
 
+static void bmp_poll_loop(void)
+{
+	SET_IDLE_STATE(false);
+	while (gdb_target_running && cur_target) {
+		gdb_poll_target();
+
+		// Check again, as `gdb_poll_target()` may
+		// alter these variables.
+		if (!gdb_target_running || !cur_target)
+			break;
+		char c = gdb_if_getchar_to(0);
+		if (c == '\x03' || c == '\x04')
+			target_halt_request(cur_target);
+#ifdef ENABLE_RTT
+		else if (rtt_enabled)
+			poll_rtt(cur_target);
+#endif
+		platform_pace_poll();
+	}
+
+	SET_IDLE_STATE(true);
+	const gdb_packet_s *const packet = gdb_packet_receive();
+	// If port closed and target detached, stay idle
+	if (packet->data[0] != '\x04' || cur_target)
+		SET_IDLE_STATE(false);
+	gdb_main(packet);
+}
+
+#if CONFIG_BMDA == 1
+int main(int argc, char **argv)
+{
+	platform_init(argc, argv);
+#else
+int my_main(void)
+{
+	platform_init();
+#endif
+
+	while (true) {
+		TRY (EXCEPTION_ALL) {
+			bmp_poll_loop();
+		}
+		CATCH () {
+		default:
+			gdb_put_packet_error(0xffU);
+			target_list_free();
+			gdb_outf("Uncaught exception: %s\n", exception_frame.msg);
+			morse("TARGET LOST.", true);
+		}
+#if CONFIG_BMDA == 1
+		if (shutdown_bmda)
+			break;
+#endif
+	}
+
+	target_list_free();
+	return 0;
+}
 // extern 
 void set_gdb_socket(int socket);
 void set_gdb_listen(int socket);
@@ -160,14 +231,17 @@ void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler));
 }
 
-
+#if 1
+void gdb_application_thread(void *pvParameters)
+{
+    my_main();
+}
+#else
 void gdb_application_thread(void *pvParameters)
 {
 	int sock, new_sd;
 	struct sockaddr_in address, remote;
 	int size;
-
-
 
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		return;
@@ -200,7 +274,7 @@ void gdb_application_thread(void *pvParameters)
 	        }
 	}
 }
-
+#endif
 //void main_task(void *parameters);
 
 

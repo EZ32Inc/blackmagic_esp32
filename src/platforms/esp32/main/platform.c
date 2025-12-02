@@ -53,7 +53,8 @@ uint32_t swd_delay_cnt = 0;
 #define AP_SSID	 "blackmagic"
 #define AP_PSK	 "blackmagic"
 
-
+//TODO: To cehck
+uint32_t target_clk_divider = 0;
 
 /* Values for STM32F103 at 72 MHz */
 #define USED_SWD_CYCLES 22
@@ -112,6 +113,7 @@ void platform_init()//int argc, char **argv)
 	//gdb_if_init();
 }
 
+//TODO To be implemented
 void platform_srst_set_val(bool assert)
 {
 	(void)assert;
@@ -119,6 +121,7 @@ void platform_srst_set_val(bool assert)
 
 bool platform_srst_get_val(void) { return false; }
 
+//TODO To be implemented
 const char *platform_target_voltage(void)
 {
 	return "not supported";
@@ -140,9 +143,9 @@ void platform_delay(uint32_t ms)
 
 int platform_hwversion(void)
 {
-	return 0;
+	return 140;
 }
-
+#if 0
 /* This is a transplanted main() from main.c */
 void main_task(void *parameters)
 {
@@ -175,9 +178,9 @@ void user_init(void)
 {
 	xTaskCreate(&main_task, "main", 4*1024, NULL, 2, NULL);
 }
+#endif
 
-
-
+//TODO To be checked these 2 funcs
 void platform_timeout_set(platform_timeout_s *t, uint32_t ms)
 {
 	t->time = platform_time_ms() + ms;
@@ -188,8 +191,7 @@ bool platform_timeout_is_expired(const platform_timeout_s *t)
 	return platform_time_ms() > t->time;
 }
 
-//TODO
-
+//TODO To be implemented
 void platform_nrst_set_val(bool assert)
 {
 #if 0
@@ -209,13 +211,84 @@ void platform_nrst_set_val(bool assert)
 #endif
 }
 
+//TODO To be implemented
 bool platform_nrst_get_val(void)
 {
 	//return gpio_get(TRST_PORT, TRST_PIN) == 0;
 	return true;
 }
 
+//TODO To be implemented
 void platform_target_clk_output_enable(bool enable)
 {
 	(void)enable;
 }
+
+
+/*
+ * Write the bootloader flag and reboot.
+ * The platform_init() will see this and reboot a second time into ST BootROM.
+ * If BMPBootloader is enabled, then it will see this and initialize its DFU.
+ */
+//TODO To be implemented
+void platform_request_boot(void)
+{
+    /*
+	magic[0] = BOOTMAGIC0;
+	magic[1] = BOOTMAGIC1;
+	scb_reset_system();
+    */
+}
+
+#ifdef PLATFORM_HAS_POWER_SWITCH
+//TODO To be implemented
+bool platform_target_get_power(void)
+{
+	return 0;//gpio_get(PWR_BR_PORT, PWR_BR_PIN);
+}
+
+//TODO To be implemented
+bool platform_target_set_power(const bool power)
+{
+	//gpio_set_val(PWR_BR_PORT, PWR_BR_PIN, power);
+	return true;
+}
+
+/*
+ * A dummy implementation of platform_target_voltage_sense as the
+ * blackpill-f4 has no ability to sense the voltage on the power pin.
+ * This function is only needed for implementations that allow the target
+ * to be powered from the debug probe.
+ */
+//TODO To be implemented
+uint32_t platform_target_voltage_sense(void)
+{
+	return 0;
+}
+#endif
+
+//TODO To be implemented
+void platform_ospeed_update(const uint32_t frequency)
+{
+}
+
+bool platform_spi_init(const spi_bus_e bus)
+{
+	return true;
+}
+
+bool platform_spi_deinit(const spi_bus_e bus)
+{
+		return false;
+}
+
+bool platform_spi_chip_select(const uint8_t device_select)
+{
+	return true;
+}
+
+uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
+{
+    return 0;
+}
+
