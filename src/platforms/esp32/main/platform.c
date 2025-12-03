@@ -109,8 +109,9 @@ void platform_init()//int argc, char **argv)
 
 	pins_init();
 
-	//assert(gdb_if_init() == 0);
-	//gdb_if_init();
+	if (gdb_if_init() != 0) {
+		// DEBUG_ERROR("Failed to initialize GDB interface\n");
+	}
 }
 
 //TODO To be implemented

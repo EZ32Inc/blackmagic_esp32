@@ -127,7 +127,7 @@ int main(int argc, char **argv)
 #else
 int my_main(void)
 {
-	platform_init();
+
 #endif
 
 	while (true) {
