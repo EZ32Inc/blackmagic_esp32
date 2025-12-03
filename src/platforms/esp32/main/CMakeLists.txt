@@ -31,6 +31,7 @@ cmake_minimum_required(VERSION 3.5)
 set(SOURCES 
 platform.c
 gdb_if.c
+rtt_if.c
 ../../../command.c
 ../../../crc32.c
 ../../../exception.c
@@ -160,6 +161,7 @@ target_compile_definitions(${COMPONENT_TARGET}
         NO_LIBOPENCM3=1
         CONFIG_BMDA=0
         HOSTED_BMP_ONLY=1
+        ENABLE_RTT=1        
 )
 
 

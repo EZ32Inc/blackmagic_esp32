@@ -110,13 +110,17 @@ static void bmp_poll_loop(void)
 			poll_rtt(cur_target);
 #endif
 		platform_pace_poll();
+#ifdef ENABLE_RTT
+		poll_rtt_host();
+#endif
 	}
 
 	SET_IDLE_STATE(true);
 	const gdb_packet_s *const packet = gdb_packet_receive();
 	// If port closed and target detached, stay idle
-	if (packet->data[0] != '\x04' || cur_target)
+	if (packet->data[0] != '\x04' || cur_target) {
 		SET_IDLE_STATE(false);
+	}
 	gdb_main(packet);
 }
 
@@ -128,6 +132,9 @@ int main(int argc, char **argv)
 int my_main(void)
 {
 
+#endif
+#ifdef ENABLE_RTT
+	rtt_if_init();
 #endif
 
 	while (true) {

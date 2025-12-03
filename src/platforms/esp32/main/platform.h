@@ -94,4 +94,8 @@ extern uint32_t swd_delay_cnt;
 
 //#define PLATFORM_HAS_DEBUG  1/
 //#define ENABLE_DEBUG 1
+int rtt_if_init(void);
+int rtt_if_exit(void);
+void poll_rtt_host(void);
+
 #endif
