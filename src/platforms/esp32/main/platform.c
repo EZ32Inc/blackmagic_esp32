@@ -121,10 +121,9 @@ void platform_srst_set_val(bool assert)
 
 bool platform_srst_get_val(void) { return false; }
 
-//TODO To be implemented
 const char *platform_target_voltage(void)
 {
-	return "not supported";
+	return "3.3V";
 }
 
 uint32_t platform_time_ms(void)
@@ -191,34 +190,22 @@ bool platform_timeout_is_expired(const platform_timeout_s *t)
 	return platform_time_ms() > t->time;
 }
 
-//TODO To be implemented
 void platform_nrst_set_val(bool assert)
 {
-#if 0
-
-	/* We reuse nTRST as nRST. */
 	if (assert) {
-		gpio_set_mode(TRST_PORT, GPIO_MODE_OUTPUT_2_MHZ, GPIO_CNF_OUTPUT_OPENDRAIN, TRST_PIN);
-		/* Wait until requested value is active. */
-		while (gpio_get(TRST_PORT, TRST_PIN))
-			gpio_clear(TRST_PORT, TRST_PIN);
+		gpio_set_direction(NRST_PIN, GPIO_MODE_OUTPUT);
+		gpio_set_level(NRST_PIN, 0);
 	} else {
-		gpio_set_mode(TRST_PORT, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, TRST_PIN);
-		/* Wait until requested value is active .*/
-		while (!gpio_get(TRST_PORT, TRST_PIN))
-			gpio_set(TRST_PORT, TRST_PIN);
+		gpio_set_direction(NRST_PIN, GPIO_MODE_INPUT);
+		gpio_set_pull_mode(NRST_PIN, GPIO_PULLUP_ONLY);
 	}
-#endif
 }
 
-//TODO To be implemented
 bool platform_nrst_get_val(void)
 {
-	//return gpio_get(TRST_PORT, TRST_PIN) == 0;
-	return true;
+	return gpio_get_level(NRST_PIN) == 0;
 }
 
-//TODO To be implemented
 void platform_target_clk_output_enable(bool enable)
 {
 	(void)enable;
@@ -230,27 +217,20 @@ void platform_target_clk_output_enable(bool enable)
  * The platform_init() will see this and reboot a second time into ST BootROM.
  * If BMPBootloader is enabled, then it will see this and initialize its DFU.
  */
-//TODO To be implemented
 void platform_request_boot(void)
 {
-    /*
-	magic[0] = BOOTMAGIC0;
-	magic[1] = BOOTMAGIC1;
-	scb_reset_system();
-    */
+	esp_restart();
 }
 
 #ifdef PLATFORM_HAS_POWER_SWITCH
-//TODO To be implemented
 bool platform_target_get_power(void)
 {
-	return 0;//gpio_get(PWR_BR_PORT, PWR_BR_PIN);
+	return true;
 }
 
-//TODO To be implemented
 bool platform_target_set_power(const bool power)
 {
-	//gpio_set_val(PWR_BR_PORT, PWR_BR_PIN, power);
+	(void)power;
 	return true;
 }
 
@@ -260,35 +240,38 @@ bool platform_target_set_power(const bool power)
  * This function is only needed for implementations that allow the target
  * to be powered from the debug probe.
  */
-//TODO To be implemented
 uint32_t platform_target_voltage_sense(void)
 {
-	return 0;
+	return 3300;
 }
 #endif
 
-//TODO To be implemented
 void platform_ospeed_update(const uint32_t frequency)
 {
+	(void)frequency;
 }
 
 bool platform_spi_init(const spi_bus_e bus)
 {
+	(void)bus;
 	return true;
 }
 
 bool platform_spi_deinit(const spi_bus_e bus)
 {
-		return false;
+	(void)bus;
+	return false;
 }
 
 bool platform_spi_chip_select(const uint8_t device_select)
 {
+	(void)device_select;
 	return true;
 }
 
 uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
 {
+	(void)bus;
+	(void)value;
     return 0;
 }
-

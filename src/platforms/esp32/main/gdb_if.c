@@ -96,8 +96,12 @@ static socket_t gdb_if_conn = INVALID_SOCKET;
 bool shutdown_bmda = false;
 
 #define GDB_BUFFER_LEN 2048U
-static size_t gdb_buffer_used = 0U;
-static char gdb_buffer[GDB_BUFFER_LEN];
+static size_t gdb_tx_buffer_used = 0U;
+static char gdb_tx_buffer[GDB_BUFFER_LEN];
+
+static size_t gdb_rx_buffer_len = 0U;
+static size_t gdb_rx_buffer_pos = 0U;
+static char gdb_rx_buffer[GDB_BUFFER_LEN];
 
 typedef struct sockaddr sockaddr_s;
 typedef struct sockaddr_in sockaddr_in_s;
@@ -315,33 +319,52 @@ char gdb_if_getchar(void)
 		DEBUG_INFO("Got connection\n");
 		socket_set_flags(gdb_if_serv, flags);
 		socket_set_flags(gdb_if_conn, socket_get_flags(gdb_if_conn) & ~O_NONBLOCK);
+		/* Reset buffer state on new connection */
+		gdb_rx_buffer_len = 0;
+		gdb_rx_buffer_pos = 0;
+		gdb_tx_buffer_used = 0;
 	}
 
-	char value = '\0';
-	int error = op_needs_retry;
-	while (error == op_needs_retry) {
-		const ssize_t result = recv(gdb_if_conn, &value, 1, 0);
-		if (result < 0) {
-			error = socket_error();
-			if (error == op_needs_retry)
-				continue;
-		} else
-			error = 0;
+	/* If buffer is empty, refill it */
+	if (gdb_rx_buffer_pos >= gdb_rx_buffer_len) {
+		int error = op_needs_retry;
+		while (error == op_needs_retry) {
+			const ssize_t result = recv(gdb_if_conn, gdb_rx_buffer, GDB_BUFFER_LEN, 0);
+			if (result < 0) {
+				error = socket_error();
+				if (error == op_needs_retry)
+					continue;
+			} else {
+				error = 0;
+			}
 
-		if (result <= 0) {
-			handle_error(gdb_if_conn, "on socket");
-			gdb_if_conn = INVALID_SOCKET;
-			/* Return '+' in case we were waiting for an ACK */
-			return '+';
+			if (result <= 0) {
+				if (result < 0)
+					handle_error(gdb_if_conn, "on socket");
+				else
+					DEBUG_INFO("Connection closed by remote\n");
+				
+				closesocket(gdb_if_conn);
+				gdb_if_conn = INVALID_SOCKET;
+				/* Return '+' in case we were waiting for an ACK */
+				return '+';
+			}
+			gdb_rx_buffer_len = (size_t)result;
+			gdb_rx_buffer_pos = 0;
 		}
 	}
-	return value;
+
+	return gdb_rx_buffer[gdb_rx_buffer_pos++];
 }
 
 char gdb_if_getchar_to(uint32_t timeout)
 {
 	if (gdb_if_conn == INVALID_SOCKET)
 		return -1;
+
+	/* If we have data in the buffer, return it immediately */
+	if (gdb_rx_buffer_pos < gdb_rx_buffer_len)
+		return gdb_if_getchar();
 
 #ifdef ESP_PLATFORM
     struct timeval select_timeout;
@@ -368,8 +391,8 @@ void gdb_if_putchar(const char c, const bool flush)
 {
 	if (gdb_if_conn == INVALID_SOCKET)
 		return;
-	gdb_buffer[gdb_buffer_used++] = c;
-	if (flush || gdb_buffer_used == GDB_BUFFER_LEN)
+	gdb_tx_buffer[gdb_tx_buffer_used++] = c;
+	if (flush || gdb_tx_buffer_used == GDB_BUFFER_LEN)
 		gdb_if_flush(flush);
 }
 
@@ -378,18 +401,35 @@ void gdb_if_flush(const bool force)
 	(void)force;
 
 	/* Flush only if there is data to flush */
-	if (gdb_buffer_used == 0U)
+	if (gdb_tx_buffer_used == 0U)
 		return;
 
 	/* Don't bother if the connection is not valid */
 	if (gdb_if_conn == INVALID_SOCKET) {
-		gdb_buffer_used = 0U;
+		gdb_tx_buffer_used = 0U;
 		return;
 	}
 
-	/* Send the data */
-	send(gdb_if_conn, gdb_buffer, gdb_buffer_used, 0);
+	size_t sent_total = 0;
+	while (sent_total < gdb_tx_buffer_used) {
+		const ssize_t result = send(gdb_if_conn, gdb_tx_buffer + sent_total, gdb_tx_buffer_used - sent_total, 0);
+		
+		if (result < 0) {
+			const int error = socket_error();
+			if (error == op_needs_retry || error == op_would_block) {
+				/* Wait a bit and retry */
+				platform_delay(1);
+				continue;
+			}
+			handle_error(gdb_if_conn, "sending to socket");
+			closesocket(gdb_if_conn);
+			gdb_if_conn = INVALID_SOCKET;
+			gdb_tx_buffer_used = 0;
+			return;
+		}
+		sent_total += (size_t)result;
+	}
 
 	/* Reset the buffer */
-	gdb_buffer_used = 0;
+	gdb_tx_buffer_used = 0;
 }

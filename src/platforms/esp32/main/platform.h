@@ -49,7 +49,7 @@
 #define TDI_PIN (4) 
 #define TDO_PIN (15) 
 #define TCK_PIN (5) 
-
+#define NRST_PIN (18)
 
 #undef PLATFORM_HAS_TRACESWO 
 #define TRACESWO_PIN 13
