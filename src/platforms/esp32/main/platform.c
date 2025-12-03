@@ -272,6 +272,5 @@ bool platform_spi_chip_select(const uint8_t device_select)
 uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
 {
 	(void)bus;
-	(void)value;
-    return 0;
+	return value;
 }
