@@ -47,14 +47,6 @@
 
 #include "platform.h"
 
-#include "general.h"
-#include "platform.h"
-#include "gdb_if.h"
-#include "gdb_main.h"
-#include "target.h"
-#include "exception.h"
-#include "gdb_packet.h"
-#include "morse.h"
 #include "command.h"
 #ifdef ENABLE_RTT
 #include "rtt.h"

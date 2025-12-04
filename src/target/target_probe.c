@@ -86,10 +86,10 @@ static inline void lpc55_dp_prepare_nop(adiv5_debug_port_s *const debug_port)
  * nop alias functions to allow support for target probe methods
  * to be disabled by not compiling/linking them in.
  */
-
+#if !(CONFIG_IDF_TARGET_ARCH_XTENSA || CONFIG_IDF_TARGET_ARCH_RISCV) // Not any ESP32 family chips
 CORTEXAR_PROBE_WEAK_NOP(cortexa_probe)
 CORTEXAR_PROBE_WEAK_NOP(cortexr_probe)
-// CORTEXM_PROBE_WEAK_NOP(cortexm_probe)
+ CORTEXM_PROBE_WEAK_NOP(cortexm_probe)
 
 TARGET_PROBE_WEAK_NOP(riscv32_probe)
 TARGET_PROBE_WEAK_NOP(riscv64_probe)
@@ -107,8 +107,12 @@ TARGET_PROBE_WEAK_NOP(at32f43x_probe)
 TARGET_PROBE_WEAK_NOP(ch32f1_probe)
 TARGET_PROBE_WEAK_NOP(ch579_probe)
 TARGET_PROBE_WEAK_NOP(efm32_probe)
+#endif
+
 TARGET_PROBE_WEAK_NOP(gd32f1_probe)
 TARGET_PROBE_WEAK_NOP(gd32f4_probe)
+
+#if !(CONFIG_IDF_TARGET_ARCH_XTENSA || CONFIG_IDF_TARGET_ARCH_RISCV) // Not any ESP32 family chips
 TARGET_PROBE_WEAK_NOP(gd32vf1_probe)
 TARGET_PROBE_WEAK_NOP(hc32l110_probe)
 TARGET_PROBE_WEAK_NOP(imxrt_probe)
@@ -122,8 +126,12 @@ TARGET_PROBE_WEAK_NOP(lpc40xx_probe)
 TARGET_PROBE_WEAK_NOP(lpc43xx_probe)
 TARGET_PROBE_WEAK_NOP(lpc546xx_probe)
 TARGET_PROBE_WEAK_NOP(lpc55xx_probe)
+#endif
+
 TARGET_PROBE_WEAK_NOP(mm32l0xx_probe)
 TARGET_PROBE_WEAK_NOP(mm32f3xx_probe)
+
+#if !(CONFIG_IDF_TARGET_ARCH_XTENSA || CONFIG_IDF_TARGET_ARCH_RISCV) // Not any ESP32 family chips
 TARGET_PROBE_WEAK_NOP(msp432e4_probe)
 TARGET_PROBE_WEAK_NOP(msp432p4_probe)
 TARGET_PROBE_WEAK_NOP(mspm0_probe)
@@ -149,11 +157,12 @@ TARGET_PROBE_WEAK_NOP(stm32h7_probe)
 TARGET_PROBE_WEAK_NOP(stm32l0_probe)
 TARGET_PROBE_WEAK_NOP(stm32l1_probe)
 TARGET_PROBE_WEAK_NOP(stm32l4_probe)
-TARGET_PROBE_WEAK_NOP(stm32mp15_ca7_probe)
 TARGET_PROBE_WEAK_NOP(stm32mp15_cm4_probe)
 TARGET_PROBE_WEAK_NOP(stm32wb0_probe)
 TARGET_PROBE_WEAK_NOP(zynq7_probe)
-
 LPC55_DP_PREPARE_WEAK_NOP(lpc55_dp_prepare)
+#endif
+
+TARGET_PROBE_WEAK_NOP(stm32mp15_ca7_probe)
 
 #endif /* _WIN32 */
