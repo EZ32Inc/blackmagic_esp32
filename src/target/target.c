@@ -56,7 +56,6 @@ const command_s target_cmd_list[] = {
 
 target_s *target_new(void)
 {
-	printf("DEBUG: Entering target_new\n");
 	target_s *target = calloc(1, sizeof(*target));
 	if (!target) { /* calloc failed: heap exhaustion */
 		DEBUG_ERROR("calloc: failed in %s\n", __func__);
@@ -64,14 +63,12 @@ target_s *target_new(void)
 	}
 
 	if (target_list) {
-		target_s *last_target = target_list;
-		while (last_target->next)
-			last_target = last_target->next;
-		last_target->next = target;
+		target_s *t = target_list;
+		while (t->next)
+			t = t->next;
+		t->next = target;
 	} else
 		target_list = target;
-
-	DEBUG_INFO("target_new: target allocated at %p, target_list is now %p\n", target, target_list);
 
 	target->target_storage = NULL;
 
@@ -148,7 +145,6 @@ void target_list_free(void)
 		target = next_target;
 	}
 	target_list = NULL;
-	DEBUG_INFO("target_list_free: target_list cleared\n");
 }
 
 void target_add_commands(target_s *target, const command_s *cmds, const char *name)

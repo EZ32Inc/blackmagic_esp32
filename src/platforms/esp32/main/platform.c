@@ -277,3 +277,10 @@ uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
 }
 
 const char *serial_no = "ESP32";
+
+void debug_serial_send_stdout(const uint8_t *data, size_t len)
+{
+	/* Stub implementation */
+	(void)data;
+	(void)len;
+}

@@ -262,7 +262,6 @@ bool adiv5_swd_scan(const uint32_t targetid)
 		adiv5_dp_init(dp);
 	}
 
-	DEBUG_INFO("adiv5_swd_scan: returning %s (target_list=%p)\n", target_list ? "true" : "false", target_list);
 	return target_list != NULL;
 }
 
