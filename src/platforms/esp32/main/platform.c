@@ -35,6 +35,7 @@
 #include <esp_timer.h>
 
 #include "platform.h"
+#include "spi_common.h"
 //#include "esp/uart.h"
 
 //#include "FreeRTOS.h"
@@ -45,6 +46,7 @@
 #include "freertos/task.h"
 
 uint32_t swd_delay_cnt = 0;
+bool spi_or_gpio = false;
 
 
 //#include <dhcpserver.h>

@@ -117,6 +117,8 @@ swo_uart.c
 #../../../platforms/common/aux_serial.c
 ../../../platforms/common/jtagtap.c
 ../../../platforms/common/swdptap.c
+spi2swd.c
+spi2jtag.c
 #../../../platforms/common/usb.c
 #../../../platforms/common/usb_dfu_stub.c
 #../../../platforms/common/usb_serial.c

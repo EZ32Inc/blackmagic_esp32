@@ -1,0 +1,185 @@
+To integrate your FPGA-based SPI to SWD/JTAG converter, you should follow the pattern used by the hosted (FTDI) platform. The core idea is to replace the default bitbanging functions with your SPI-accelerated ones by overriding the function pointers in the global swd_proc and jtag_proc structures.
+
+Here is the recommended approach:
+
+1. Create a New Driver File
+Create a new file, e.g., src/platforms/esp32/main/spi_fpga.c (and .h). This file will contain your SPI driver and the interface implementations.
+
+2. Implement SWD Interface
+You need to implement the functions defined in swd_proc_s (see src/target/swd.h). Use src/platforms/hosted/ftdi_swd.c as a reference.
+
+Your spi_fpga.c should implement:
+
+c
+#include "swd.h"
+#include "driver/spi_master.h" // ESP-IDF SPI driver
+
+// ... SPI initialization code ...
+
+static void spi_swd_seq_out(uint32_t data, size_t bits) {
+    // 1. Construct SPI packet with 'data' and command to drive SWDIO output
+    // 2. Perform SPI transaction
+}
+
+static uint32_t spi_swd_seq_in(size_t bits) {
+    // 1. Construct SPI packet with command to read SWDIO input
+    // 2. Perform SPI transaction
+    // 3. Extract and return the read bits
+    return read_value;
+}
+
+static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t bits) {
+    // Similar to seq_in, but also check parity if your FPGA supports it,
+    // or implement parity checking in software on the received data.
+    uint32_t val = spi_swd_seq_in(bits);
+    *parity_data = val;
+    return check_parity(val); // You might need a software parity check helper
+}
+
+void spi_fpga_swd_enable(void) {
+    // Override the global function pointers
+    swd_proc.seq_in = spi_swd_seq_in;
+    swd_proc.seq_out = spi_swd_seq_out;
+    swd_proc.seq_in_parity = spi_swd_seq_in_parity;
+    // ... set other fields if necessary
+}
+3. Implement JTAG Interface (Optional)
+If you need JTAG, implement jtag_proc_s functions (see src/target/jtagtap.h and src/platforms/hosted/ftdi_jtag.c).
+
+c
+#include "jtagtap.h"
+
+static void spi_jtag_tms_seq(uint32_t tms, size_t bits) {
+    // Send TMS sequence via SPI
+}
+
+static void spi_jtag_scan(bool tms, const uint8_t *tdi, uint8_t *tdo, size_t bits) {
+    // Send TDI data and receive TDO data via SPI
+}
+
+void spi_fpga_jtag_enable(void) {
+    jtag_proc.jtagtap_tms_seq = spi_jtag_tms_seq;
+    jtag_proc.jtagtap_tdi_tdo_seq = spi_jtag_scan;
+    // ... map other functions
+}
+4. Integrate into Platform Init
+In src/platforms/esp32/main/platform.c, modify platform_init() to initialize your SPI driver and hook up the interfaces.
+
+c
+// src/platforms/esp32/main/platform.c
+
+#include "spi_fpga.h"
+
+void platform_init(void) {
+    pins_init(); // Keep this for other pins if needed
+
+    // Initialize your SPI bus and device
+    spi_fpga_hw_init();
+
+    // Hook up the accelerated interfaces
+    spi_fpga_swd_enable();
+    spi_fpga_jtag_enable();
+
+    if (gdb_if_init() != 0) { ... }
+}
+Key Considerations
+State Machine: The swd_proc interface operates at a low level (bits/sequences). Your FPGA protocol likely accepts commands like "Write X bits" or "Read Y bits". You need to map the seq_out/seq_in calls to these commands.
+Turnaround: SWD requires turnaround cycles (switching SWDIO direction). Ensure your FPGA handles this or provides a command to switch direction. ftdi_swd.c handles this in ftdi_swd_turnaround.
+Speed: SPI is much faster than bitbanging. You might need to adjust platform_max_frequency_set to control the SPI clock speed if the target can't keep up.
+This approach keeps your changes isolated in spi_fpga.c and allows you to easily switch back to bitbanging if needed (by commenting out the _enable() calls).
+
+
+Question:
+Currently all compiled and it works using GPIO as before. 
+But I am not sure if we set spi_or_gpio =true will make the spi interface work. 
+Seems to me platform_init() in src/platforms/esp32/main/platform.c  will still be called and GPIO will still be used.
+
+How does the code know it should use swd_proc and jtag_proc, instead of using the GPIO?
+
+
+I have confirmed that 
+swdptap_init
+ is called in 
+remote.c
+ line 142. I also have the correct context for 
+CMakeLists.txt
+. I am now applying the fix to 
+CMakeLists.txt
+ to correctly replace the source files.
+
+Files Edited
+CMakeLists.txt
+Progress Updates
+1
+Fixing CMakeLists.txt and verifying initialization flow
+
+2
+Applying fix to CMakeLists.txt
+
+You are correct that platform_init() is called at boot, but here is the key:
+
+platform_init() does not initialize the SWD/JTAG protocol.
+
+It only initializes the hardware pins (GPIOs) and the GDB interface.
+
+The actual protocol initialization happens lazily when you connect via GDB and issue a scan command (like monitor swdp_scan). This triggers remote.c to call swdptap_init() or jtagtap_init().
+
+Here is the flow:
+
+Boot: platform_init() runs. spi_or_gpio is false.
+GDB Connect: You connect to the probe.
+Scan Command: You run monitor swdp_scan.
+Remote Protocol: remote.c receives the REMOTE_INIT packet.
+Lazy Init: remote.c calls swdptap_init() (line 142).
+Wrapper Logic: My new swdptap_init in spi2swd.c runs:
+c
+void swdptap_init(void) {
+    if (spi_or_gpio) {
+        spi_swd_init(); // Sets swd_proc to SPI functions
+    } else {
+        gpio_swdptap_init(); // Sets swd_proc to GPIO functions
+    }
+}
+So, if you change spi_or_gpio to true (e.g., via a new monitor command or hardcoding it) and then re-scan, it will switch to the SPI driver dynamically.
+
+I have also fixed the CMakeLists.txt to ensure spi2swd.c and spi2jtag.c are compiled. You can now proceed to implement the SPI logic in those files.
+
+void swdptap_init(void) seems correct. But I am still not sure how  swd_proc and jtag_proc are used and how they select and call GPIO or SPI related functions. Please explain
+
+Explaining SPI/GPIO Switching Logic
+I have verified the struct definitions. Now I am updating 
+Task
+ and 
+Implementation Plan
+ to formally track the "Implement SPI/GPIO Bridge" task and its details. After this, I will answer the user's question.
+
+Files Edited
+Implementation Plan
+Task
+Progress Updates
+1
+Verifying struct definitions and updating artifacts
+
+2
+Updating artifacts with new task
+
+How swd_proc and jtag_proc Work
+The Black Magic Probe codebase uses a function pointer interface (similar to a vtable in C++) to abstract the low-level hardware access.
+
+The Interface Structs:
+swd_proc_s (defined in swd.h) contains pointers like seq_in and seq_out.
+jtag_proc_s (defined in jtagtap.h) contains pointers like jtagtap_tms_seq and jtagtap_tdi_tdo_seq.
+Global Instances:
+There are global variables swd_proc and jtag_proc of these struct types.
+The rest of the code (e.g., adiv5_swd.c) calls functions via these pointers: swd_proc.seq_out(...). It doesn't know what function it's calling, just that it matches the signature.
+Initialization (The Switch):
+When swdptap_init() is called (which happens when you connect via GDB), my new wrapper function runs.
+If spi_or_gpio is false (default): It calls gpio_swdptap_init(). This function (from the original swdptap.c) sets the pointers to the bitbanging functions:
+c
+swd_proc.seq_out = swdptap_seq_out; // The GPIO bitbang version
+If spi_or_gpio is true: It calls spi_swd_init(). This function (in spi2swd.c) sets the pointers to your new SPI functions:
+c
+swd_proc.seq_out = spi_swd_seq_out; // Your SPI FPGA version
+So, by changing the spi_or_gpio flag and re-initializing (e.g., by re-scanning in GDB), you swap out the entire low-level driver implementation at runtime. The upper layers of the stack remain completely unaware of this change.
+
+
