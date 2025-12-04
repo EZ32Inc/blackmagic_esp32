@@ -32,6 +32,8 @@ set(SOURCES
 platform.c
 gdb_if.c
 rtt_if.c
+swo_if.c
+swo_uart.c
 ../../../command.c
 ../../../crc32.c
 ../../../exception.c
@@ -162,6 +164,6 @@ target_compile_definitions(${COMPONENT_TARGET}
         CONFIG_BMDA=0
         HOSTED_BMP_ONLY=1
         ENABLE_RTT=1        
+        PLATFORM_HAS_TRACESWO=1
+        SWO_ENCODING=2
 )
-
-

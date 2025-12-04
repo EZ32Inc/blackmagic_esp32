@@ -48,7 +48,11 @@
 #ifdef PLATFORM_HAS_TRACESWO
 #include "serialno.h"
 #include "swo.h"
+#if CONFIG_IDF_TARGET_ARCH_XTENSA || CONFIG_IDF_TARGET_ARCH_RISCV
+// All ESP32 family chips go here
+#else
 #include "usb.h"
+#endif
 #endif
 
 static bool cmd_version(target_s *target, int argc, const char **argv);
@@ -715,7 +719,11 @@ static bool cmd_swo_enable(int argc, const char **argv)
 	}
 	gdb_outf("\n");
 	/* Then the connection information for programs that are scraping BMD's output to know what to connect to */
+#if CONFIG_IDF_TARGET_ARCH_XTENSA || CONFIG_IDF_TARGET_ARCH_RISCV //All ESP32 family chips go here
+	gdb_outf("Trace enabled for BMP serial %s\n", serial_no);
+#else
 	gdb_outf("Trace enabled for BMP serial %s, USB EP %u\n", serial_no, SWO_ENDPOINT);
+#endif
 	return true;
 }
 

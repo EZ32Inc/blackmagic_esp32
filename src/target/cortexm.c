@@ -253,9 +253,14 @@ void cortexm_demcr_write(target_s *target, uint32_t demcr)
 
 bool cortexm_probe(adiv5_access_port_s *ap)
 {
+	printf("DEBUG: Entering cortexm_probe\n");
+	SYNTAX_ERROR_HERE;
 	target_s *target = target_new();
-	if (!target)
+	if (!target) {
+		DEBUG_ERROR("cortexm_probe: target_new failed\n");
 		return false;
+	}
+	DEBUG_INFO("cortexm_probe: target created at %p\n", target);
 
 	adiv5_ap_ref(ap);
 	if (ap->dp->version >= 2 && ap->dp->target_designer_code != 0) {

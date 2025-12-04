@@ -51,7 +51,7 @@
 #define TCK_PIN (5) 
 #define NRST_PIN (18)
 
-#undef PLATFORM_HAS_TRACESWO 
+#define PLATFORM_HAS_TRACESWO 1 
 #define TRACESWO_PIN 13
 // Workaround for driver
 #define TRACESWO_DUMMY_TX 19
@@ -97,5 +97,8 @@ extern uint32_t swd_delay_cnt;
 int rtt_if_init(void);
 int rtt_if_exit(void);
 void poll_rtt_host(void);
+
+int swo_if_init(void);
+void poll_swo_host(void);
 
 #endif

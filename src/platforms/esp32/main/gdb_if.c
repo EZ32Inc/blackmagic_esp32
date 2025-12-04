@@ -73,7 +73,7 @@ typedef int32_t socket_t;
 //#include "bmp_hosted.h"
 #include "command.h"
 
-#define DEFAULT_PORT 2000U
+#define DEFAULT_PORT 4242U
 static const uint16_t default_port = DEFAULT_PORT;
 static const uint16_t max_port = (DEFAULT_PORT + 4U);
 

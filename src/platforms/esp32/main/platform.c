@@ -275,3 +275,5 @@ uint8_t platform_spi_xfer(const spi_bus_e bus, const uint8_t value)
 	(void)bus;
 	return value;
 }
+
+const char *serial_no = "ESP32";

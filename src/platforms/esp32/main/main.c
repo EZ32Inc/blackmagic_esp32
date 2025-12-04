@@ -113,6 +113,9 @@ static void bmp_poll_loop(void)
 #ifdef ENABLE_RTT
 		poll_rtt_host();
 #endif
+#ifdef PLATFORM_HAS_TRACESWO
+		poll_swo_host();
+#endif
 	}
 
 	SET_IDLE_STATE(true);
@@ -135,6 +138,9 @@ int my_main(void)
 #endif
 #ifdef ENABLE_RTT
 	rtt_if_init();
+#endif
+#ifdef PLATFORM_HAS_TRACESWO
+	swo_if_init();
 #endif
 
 	while (true) {

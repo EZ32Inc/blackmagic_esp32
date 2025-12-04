@@ -56,8 +56,9 @@ static void bmp_poll_loop(void)
 	SET_IDLE_STATE(true);
 	const gdb_packet_s *const packet = gdb_packet_receive();
 	// If port closed and target detached, stay idle
-	if (packet->data[0] != '\x04' || cur_target)
+	if (packet->data[0] != '\x04' || cur_target){
 		SET_IDLE_STATE(false);
+    }
 	gdb_main(packet);
 }
 
