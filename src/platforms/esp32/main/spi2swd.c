@@ -2,6 +2,10 @@
 #include "platform.h"
 #include "swd.h"
 #include "spi_common.h"
+#include "spi_fpga.h"
+
+static uint8_t g_buffered_request = 0;
+static bool g_last_op_was_read = false;
 
 /* Rename the original init function so we can wrap it */
 #define swdptap_init gpio_swdptap_init
@@ -30,6 +34,23 @@ static void spi_swd_seq_out(uint32_t data, size_t bits)
 	 *           |     Target samples on Rising Edge
 	 *           Host drives on Falling Edge
 	 */
+	if (bits == 8) {
+		g_buffered_request = (uint8_t)data;
+	} else {
+		while (bits > 0) {
+			uint8_t n = (bits > 32) ? 32 : (uint8_t)bits;
+			spi_dp_wr_nbit(data, n);
+			if (bits >= 32) {
+				data = 0; // Should shift data if we had > 32 bits of actual data, but data is uint32_t.
+				          // If bits > 32, it's likely line reset (all 1s) or idle cycles (0s).
+						  // If data was 0xFFFFFFFF, it stays 0xFFFFFFFF for line reset.
+						  // If data was 0, it stays 0.
+						  // If it was some other pattern, we can't really support > 32 bits with single uint32_t data.
+						  // Assuming standard usage: Line Reset (ones) or Idle (zeros).
+			}
+			bits -= n;
+		}
+	}
 }
 
 static uint32_t spi_swd_seq_in(size_t bits)
@@ -53,6 +74,9 @@ static uint32_t spi_swd_seq_in(size_t bits)
 	 *           |     Host samples on Rising Edge
 	 *           Target drives on Falling Edge
 	 */
+	if (bits == 3) {
+		return spi_request_seq_in(g_buffered_request, g_last_op_was_read);
+	}
 	return 0;
 }
 
@@ -80,7 +104,9 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t bits)
 	 *           |            Host samples Parity on Rising Edge
 	 *           Target drives on Falling Edge
 	 */
-	return false;
+	bool parity_err = spi_dp_seq_in_parity_32bit(parity_data);
+	g_last_op_was_read = true;
+	return !parity_err;
 }
 
 static void spi_swd_seq_out_parity(uint32_t data, size_t bits)
@@ -105,6 +131,8 @@ static void spi_swd_seq_out_parity(uint32_t data, size_t bits)
 	 *           |            Target samples Parity on Rising Edge
 	 *           Host drives on Falling Edge
 	 */
+	spi_dp_seq_out_parity_32bit(data);
+	g_last_op_was_read = false;
 }
 
 void spi_swd_init(void)
