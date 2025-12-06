@@ -398,19 +398,65 @@ uint32_t adiv5_swd_clear_error(adiv5_debug_port_s *const dp, const bool protocol
 			ADIV5_DP_CTRLSTAT_WDATAERR);
 }
 
+#define MY_SWD_TEST 1
+
+#ifdef MY_SWD_TEST
+uint32_t adiv5_swd_rdnwr_no_check_getAck(const uint16_t addr, const uint8_t rnw, const uint32_t value, uint8_t *ack, bool *seq_in_res)
+{
+	const uint8_t request = make_packet_request(rnw, addr);
+	uint32_t response = 0;
+
+    *seq_in_res = true;
+	swd_proc.seq_out(request, 8U);
+	*ack = swd_proc.seq_in(3U);
+
+    if (rnw) {
+        *seq_in_res = swd_proc.seq_in_parity(&response, 32U);
+    } else{
+        swd_proc.seq_out_parity(value, 32U);
+    }
+    swd_proc.seq_out(0, 8U);
+
+    if(rnw){
+        return (*ack) == SWD_ACK_OK ? response : 0;
+    }
+    return 0;
+}
+#endif
 uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const uint16_t addr, const uint32_t value)
 {
 	if ((addr & ADIV5_APnDP) && dp->fault)
 		return 0;
 
+#ifdef MY_SWD_TEST
+    bool seq_in_res = true;
+	//const uint8_t request = make_packet_request(rnw, addr);
+#else
 	const uint8_t request = make_packet_request(rnw, addr);
+#endif
 	uint32_t response = 0;
 	uint8_t ack = SWD_ACK_WAIT;
 	platform_timeout_s timeout;
 	platform_timeout_set(&timeout, 250U);
 	do {
+#ifdef MY_SWD_TEST
+/*
 		swd_proc.seq_out(request, 8U);
 		ack = swd_proc.seq_in(3U);
+        if (rnw) {
+            seq_in_res = swd_proc.seq_in_parity(&response, 32U);
+        } else{
+            swd_proc.seq_out_parity(value, 32U);
+        }
+        swd_proc.seq_out(0, 8U);
+*/      
+
+        response = adiv5_swd_rdnwr_no_check_getAck(addr, rnw, value, &ack, &seq_in_res);
+#else
+		swd_proc.seq_out(request, 8U);
+		ack = swd_proc.seq_in(3U);
+#endif
+#if 0 //ali comment this part out. The lofic is not right to me!
 		if (ack == SWD_ACK_FAULT) {
 			DEBUG_ERROR("SWD access resulted in fault, retrying\n");
 			/* On fault, abort the request and repeat */
@@ -419,6 +465,7 @@ uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const u
 				ADIV5_DP_ABORT_ORUNERRCLR | ADIV5_DP_ABORT_WDERRCLR | ADIV5_DP_ABORT_STKERRCLR |
 					ADIV5_DP_ABORT_STKCMPCLR);
 		}
+#endif
 	} while ((ack == SWD_ACK_WAIT || ack == SWD_ACK_FAULT) && !platform_timeout_is_expired(&timeout));
 
 	if (ack == SWD_ACK_WAIT) {
@@ -445,6 +492,7 @@ uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const u
 		raise_exception(EXCEPTION_ERROR, "SWD invalid ACK");
 	}
 
+#ifndef MY_SWD_TEST
 	if (rnw) {
 		if (!swd_proc.seq_in_parity(&response, 32U)) { /* Give up on parity error */
 			dp->fault = 1U;
@@ -464,6 +512,15 @@ uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const u
 	 *   slight speed decrease
 	 */
 	swd_proc.seq_out(0, 8U);
+#else
+	if (rnw) {
+		if (!seq_in_res) { /* Give up on parity error */
+			dp->fault = 1U;
+			DEBUG_ERROR("SWD access resulted in parity error\n");
+			raise_exception(EXCEPTION_ERROR, "SWD parity error");
+		}
+	}
+#endif
 
 	return response;
 }
