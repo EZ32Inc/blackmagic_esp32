@@ -88,9 +88,6 @@ void spi_dp_wr_nbit(uint32_t data_in, uint8_t nbit)
 }
 void spi_dp_wr32bit(uint32_t data_in)
 {
-	//dp->seq_out(0xffffffffU, 32U);
-	//dp->seq_out(0x0fffffffU, 32U);
-
     uint8_t tx[8];
     uint8_t rx[8];
     uint8_t i=0;

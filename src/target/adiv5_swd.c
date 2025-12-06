@@ -456,7 +456,7 @@ uint32_t adiv5_swd_raw_access(adiv5_debug_port_s *dp, const uint8_t rnw, const u
 		swd_proc.seq_out(request, 8U);
 		ack = swd_proc.seq_in(3U);
 #endif
-#if 0 //ali comment this part out. The lofic is not right to me!
+#if 0 //ali comment this part out. The logic is not right to me!
 		if (ack == SWD_ACK_FAULT) {
 			DEBUG_ERROR("SWD access resulted in fault, retrying\n");
 			/* On fault, abort the request and repeat */

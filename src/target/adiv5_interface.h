@@ -155,8 +155,11 @@ static inline uint32_t adiv5_dp_recoverable_access(adiv5_debug_port_s *dp, uint8
 	if (dp->fault == SWD_ACK_NO_RESPONSE) {
 		uint32_t response;
 		/* Wait the response period, then clear the error */
-		swd_proc.seq_in_parity(&response, 32);
-		DEBUG_WARN("Recovering and re-trying access\n");
+
+        //ali note: Does ot make sense and comment out this
+        //swd_proc.seq_in_parity(&response, 32);
+
+        DEBUG_WARN("Recovering and re-trying access\n");
 		dp->error(dp, true);
 		response = dp->low_access(dp, rnw, addr, value);
 		/* If the access results in no-response again, throw to propergate that up */
