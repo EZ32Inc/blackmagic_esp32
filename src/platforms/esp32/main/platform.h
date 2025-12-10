@@ -45,11 +45,11 @@
 
 #define TMS_SET_MODE() do { } while (0)
 
-#define TMS_PIN (6) 
-#define TDI_PIN (4) 
-#define TDO_PIN (15) 
-#define TCK_PIN (5) 
-#define NRST_PIN (18)
+#define TMS_PIN (40)
+#define TDI_PIN (47)
+#define TDO_PIN (48)
+#define TCK_PIN (45)
+#define NRST_PIN (41)
 
 #define PLATFORM_HAS_TRACESWO 1 
 #define TRACESWO_PIN 13
@@ -57,10 +57,11 @@
 #define TRACESWO_DUMMY_TX 19
 
 // ON ESP32 we dont have the PORTS, this is dummy value until code is corrected
-#define SWCLK_PORT  0
+//#define SWCLK_PORT  0
 
-#define SWDIO_PIN (15)
-#define SWCLK_PIN (4)
+#define SWDIO_PIN (48)
+#define SWCLK_PIN (47)
+#define SWDIO_RDnWR_PIN (45)
 
 // Allow debugging by toggling the pin
 //#define MY_DEBUG_PIN (12)
@@ -84,12 +85,14 @@ extern uint32_t swd_delay_cnt;
 #define SWDIO_MODE_FLOAT() do {			\
 		gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);		\
 		gpio_set_pull_mode(SWDIO_PIN, GPIO_FLOATING);		\
+        gpio_set_level(SWDIO_RDnWR_PIN, 0); \
 	} while (0)
 
  //gpio_enable(SWDIO_PIN, GPIO_OUTPUT);		
 
 #define SWDIO_MODE_DRIVE() do {				\
            gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);		\
+           gpio_set_level(SWDIO_RDnWR_PIN, 1); \
 	} while (0)
 
 //#define PLATFORM_HAS_DEBUG  1/

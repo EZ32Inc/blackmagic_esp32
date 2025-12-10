@@ -55,7 +55,7 @@ bool spi_or_gpio = false;
 #define AP_SSID	 "blackmagic"
 #define AP_PSK	 "blackmagic"
 
-//TODO: To cehck
+//TODO: To check
 uint32_t target_clk_divider = 0;
 
 /* Values for STM32F103 at 72 MHz */
@@ -86,7 +86,9 @@ uint32_t platform_max_frequency_get(void)
 
 
 //  | (1<<MY_DEBUG_PIN)
-#define GPIO_OUTPUT_PIN_SEL  ((1<<SWCLK_PIN) | (1<<SWDIO_PIN) | (1<<TMS_PIN) | (1<<TDI_PIN) | (1<<TDO_PIN) | (1<<TCK_PIN))
+#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SWDIO_RDnWR_PIN) | (1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | \
+        (1ULL<<TMS_PIN) | (1ULL<<TDI_PIN) | (1ULL<<TDO_PIN) | (1ULL<<TCK_PIN))
+//#define GPIO_OUTPUT_PIN_SEL  (BIT(SWDIO_RDnWR_PIN) | BIT(SWCLK_PIN) | BIT(SWDIO_PIN) | BIT(TMS_PIN) | BIT(TDI_PIN) | BIT(TDO_PIN) | BIT(TCK_PIN))
 
 void pins_init() {
 
