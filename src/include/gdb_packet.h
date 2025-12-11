@@ -82,7 +82,7 @@ bool gdb_packet_get_ack(uint32_t timeout);
 char *gdb_packet_buffer(void);
 
 /* Convenience wrappers */
-void gdb_put_packet(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data);
+void bmd_gdb_put_packet(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data);
 
 static inline void gdb_put_packet_empty(void)
 {
@@ -92,17 +92,17 @@ static inline void gdb_put_packet_empty(void)
 	 * 
 	 * An empty response (raw character sequence ‘$#00’) means the command is not supported by the stub.
 	 */
-	gdb_put_packet(NULL, 0, NULL, 0, false);
+	bmd_gdb_put_packet(NULL, 0, NULL, 0, false);
 }
 
 static inline void gdb_put_packet_str(const char *const str)
 {
-	gdb_put_packet(str, strlen(str), NULL, 0, false);
+	bmd_gdb_put_packet(str, strlen(str), NULL, 0, false);
 }
 
 static inline void gdb_put_packet_hex(const void *const data, const size_t size)
 {
-	gdb_put_packet(NULL, 0, (const char *)data, size, true);
+	bmd_gdb_put_packet(NULL, 0, (const char *)data, size, true);
 }
 
 static inline void gdb_put_packet_ok(void)
@@ -135,7 +135,7 @@ static inline void gdb_put_packet_error(const uint8_t error)
 	 * Format: ‘E.errtext’
      * errtext is the textual error message, encoded in ASCII.
 	 */
-	gdb_put_packet("E", 1U, (const char *)&error, 1U, true);
+	bmd_gdb_put_packet("E", 1U, (const char *)&error, 1U, true);
 }
 
 void gdb_put_notification_str(const char *const str);

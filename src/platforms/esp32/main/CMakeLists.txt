@@ -37,13 +37,14 @@ swo_uart.c
 spi_fpga.c
 spi2swd.c
 spi2jtag.c
+esp32_appmain.c
+main.c
 ../../../command.c
 ../../../crc32.c
 ../../../exception.c
 ../../../gdb_main.c
 ../../../gdb_packet.c
 ../../../hex_utils.c
-../../../main.c
 ../../../maths_utils.c
 ../../../morse.c
 ../../../remote.c
@@ -150,7 +151,7 @@ set(TARGETS
 #set_source_files_properties(${TARGETS} PROPERTIES COMPILE_FLAGS "-DPC_HOSTED=0")
 #set_source_files_properties(${TARGETS} PROPERTIES COMPILE_FLAGS "-Wall")
 idf_component_register(
-        SRCS ${SOURCES} ${TARGETS} main.c 
+        SRCS ${SOURCES} ${TARGETS}
         INCLUDE_DIRS 
             ../../../include 
             ../../common

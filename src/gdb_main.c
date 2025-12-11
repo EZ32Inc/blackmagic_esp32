@@ -454,7 +454,7 @@ static void handle_q_string_reply(const char *reply, const char *param)
 	size_t output_len = reply_length - addr;
 	if (output_len > len)
 		output_len = len;
-	gdb_put_packet("m", 1U, reply + addr, output_len, false);
+	bmd_gdb_put_packet("m", 1U, reply + addr, output_len, false);
 }
 
 static void exec_q_supported(const char *packet, const size_t length)

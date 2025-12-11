@@ -347,7 +347,7 @@ void gdb_packet_send(const gdb_packet_s *const packet)
 	}
 }
 
-void gdb_put_packet(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data)
+void bmd_gdb_put_packet(const char *preamble, size_t preamble_size, const char *data, size_t data_size, bool hex_data)
 {
 	gdb_packet_s *packet = gdb_full_packet_buffer();
 
@@ -453,7 +453,7 @@ void gdb_out(const char *const str)
      * Can happen at any time while the program is running and the debugger should continue to wait for ‘W’, ‘T’, etc.
      * This reply is not permitted in non-stop mode.
      */
-	gdb_put_packet("O", 1U, str, strnlen(str, GDB_OUT_PACKET_MAX_SIZE), true);
+	bmd_gdb_put_packet("O", 1U, str, strnlen(str, GDB_OUT_PACKET_MAX_SIZE), true);
 }
 
 void gdb_voutf(const char *const fmt, va_list ap)
