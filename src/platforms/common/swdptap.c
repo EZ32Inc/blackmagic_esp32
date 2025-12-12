@@ -68,7 +68,7 @@ void swdptap_init(void)
 
 static void swdptap_turnaround(const swdio_status_t dir)
 {
-	static swdio_status_t olddir = SWDIO_STATUS_FLOAT;
+	static swdio_status_t olddir = SWDIO_STATUS_DRIVE; //SWDIO_STATUS_FLOAT;
 	/* Don't turnaround if direction not changing */
 	if (dir == olddir)
 		return;
