@@ -46,8 +46,7 @@
 #include "freertos/task.h"
 
 uint32_t swd_delay_cnt = 0;
-bool spi_or_gpio = false;
-
+//bool gpio_nspi = true; //1, gpio; 0, spi
 
 //#include <dhcpserver.h>
 
@@ -105,12 +104,15 @@ void pins_init() {
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
     gpio_config(&io_conf);
+
+    //
+    gpio_set_direction(SWDIO_RDnWR_PIN, GPIO_MODE_OUTPUT);
+    SWDIO_MODE_FLOAT();
+    //gpio_set_level(SWDIO_RDnWR_PIN, 1);
 }
 
 void platform_init()//int argc, char **argv)
 {
-
-
 	pins_init();
 
 	if (gdb_if_init() != 0) {
