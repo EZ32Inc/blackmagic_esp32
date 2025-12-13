@@ -33,11 +33,6 @@
 #define SWDIO_IN_PIN SWDIO_PIN
 #endif
 
-typedef enum swdio_status_e {
-	SWDIO_STATUS_FLOAT = 0,
-	SWDIO_STATUS_DRIVE
-} swdio_status_t;
-
 swd_proc_s swd_proc;
 
 static void swdptap_turnaround(swdio_status_t dir) __attribute__((optimize(3)));

@@ -4,6 +4,8 @@
 #include "spi_common.h"
 #include "spi_fpga.h"
 
+#include "esp_log.h"
+
 static uint8_t g_buffered_request = 0;
 static bool g_last_op_was_read = false;
 
@@ -12,11 +14,11 @@ static bool g_last_op_was_read = false;
 #include "../../../platforms/common/swdptap.c"
 #undef swdptap_init
 
+static swdio_status_t current_dir = SWDIO_STATUS_DRIVE;
+
 /* SPI FPGA SWD Stubs */
-static void spi_swd_seq_out(uint32_t data, size_t bits)
+static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
 {
-	(void)data;
-	(void)bits;
 	/* 
 	 * Pseudo Code:
 	 * 1. Construct the SPI packet:
@@ -34,23 +36,31 @@ static void spi_swd_seq_out(uint32_t data, size_t bits)
 	 *           |     Target samples on Rising Edge
 	 *           Host drives on Falling Edge
 	 */
-	if (bits == 8) {
-		g_buffered_request = (uint8_t)data;
-	} else {
-		while (bits > 0) {
-			uint8_t n = (bits > 32) ? 32 : (uint8_t)bits;
-			spi_dp_wr_nbit(data, n);
-			if (bits >= 32) {
-				data = 0; // Should shift data if we had > 32 bits of actual data, but data is uint32_t.
-				          // If bits > 32, it's likely line reset (all 1s) or idle cycles (0s).
-						  // If data was 0xFFFFFFFF, it stays 0xFFFFFFFF for line reset.
-						  // If data was 0, it stays 0.
-						  // If it was some other pattern, we can't really support > 32 bits with single uint32_t data.
-						  // Assuming standard usage: Line Reset (ones) or Idle (zeros).
-			}
-			bits -= n;
-		}
-	}
+    if (nbit>32 || nbit==0){
+       ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
+       return;
+    }
+
+    uint8_t len = nbit;
+    if(current_dir == SWDIO_STATUS_FLOAT){
+        len++;//and start TRN bit
+    }
+
+    uint8_t tx[8];
+    uint8_t rx[8];
+    uint8_t i=0, j=0;
+    uint32_t data = reverse_bits32(data_in); //to send out data from LSB to MSB
+    ESP_LOGD("spi_dp_wr_nbit", "data_in=0x%08lx n=%d first bit is TRN=%s",data_in, nbit, current_dir == SWDIO_STATUS_FLOAT ? "true": "false");
+    tx[i++] = ((nbit-1) | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
+    while(j<nbit){
+        tx[i++] = data>>24;
+        data = data<<8;
+        j += 8;
+    }
+    spi_device2_transfer_data(tx,rx,i);
+
+    current_dir = SWDIO_STATUS_DRIVE;
+    return;
 }
 
 static uint32_t spi_swd_seq_in(size_t bits)

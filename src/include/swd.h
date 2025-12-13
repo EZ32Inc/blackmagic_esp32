@@ -25,6 +25,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+typedef enum swdio_status_e {
+	SWDIO_STATUS_FLOAT = 0,
+	SWDIO_STATUS_DRIVE
+} swdio_status_t;
+
 /* Functions interface talking SWD */
 typedef struct swd_proc {
 	/* Perform a clock_cycles read */

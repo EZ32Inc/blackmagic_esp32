@@ -10,7 +10,6 @@
 #include "spi_fpga.h"
 
 #include "adiv5.h"
-#include "../../../../main/esp32jtag_common.h"
 
 //extern spi_device_handle_t gbl_spi_h1;
 
@@ -88,6 +87,10 @@ void spi_dp_wr_nbit(uint32_t data_in, uint8_t nbit)
 }
 void spi_dp_wr32bit(uint32_t data_in)
 {
+#if 1
+    spi_dp_wr_nbit(data_in, 32);
+#else
+
     uint8_t tx[8];
     uint8_t rx[8];
     uint8_t i=0;
@@ -99,6 +102,7 @@ void spi_dp_wr32bit(uint32_t data_in)
     tx[i++] = data>>8;
     tx[i++] = data;
     spi_device2_transfer_data(tx,rx,i);
+#endif
 }
 bool spi_dp_seq_in_parity_32bit(uint32_t *data)
 {

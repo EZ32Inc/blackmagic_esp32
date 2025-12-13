@@ -1,6 +1,8 @@
 #ifndef SPI_FPGA_H
 #define SPI_FPGA_H
 
+#include "../../../../main/esp32jtag_common.h"
+
 #define RDnWR 0x20
 #define EXTRA8_FLAG 0x20 //bit 5 of 2nd byte
 #define FIRST_BYTE_WR 0x81
@@ -25,4 +27,7 @@ uint8_t spi_request_seq_in(uint8_t request, bool last_time_rd);
 
 bool spi_dp_seq_in_parity_32bit(uint32_t *data);
 void spi_dp_seq_out_parity_32bit(uint32_t data_in);
+
+uint8_t reverse_bits8(uint8_t v);
+uint32_t reverse_bits32(uint32_t v);
 #endif//SPI_FPGA_H
