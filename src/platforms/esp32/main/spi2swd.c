@@ -6,6 +6,8 @@
 
 #include "esp_log.h"
 
+bool spi_or_gpio = false ; //true;
+
 static uint8_t g_buffered_request = 0;
 static bool g_last_op_was_read = false;
 
@@ -50,10 +52,23 @@ static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
     uint8_t rx[8];
     uint8_t i=0, j=0;
     uint32_t data = reverse_bits32(data_in); //to send out data from LSB to MSB
+
+    uint8_t carry = 0;
+    if (current_dir == SWDIO_STATUS_FLOAT) {
+        if (nbit == 32) {
+            carry = (data & 1) << 7;
+        }
+        data = data >> 1;
+    }
+
     ESP_LOGD("spi_dp_wr_nbit", "data_in=0x%08lx n=%d first bit is TRN=%s",data_in, nbit, current_dir == SWDIO_STATUS_FLOAT ? "true": "false");
-    tx[i++] = ((nbit-1) | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
-    while(j<nbit){
-        tx[i++] = data>>24;
+    tx[i++] = ((len-1) | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
+    while(j<len){
+        tx[i] = data>>24;
+        if (current_dir == SWDIO_STATUS_FLOAT && j == 32) {
+             tx[i] |= carry;
+        }
+        i++;
         data = data<<8;
         j += 8;
     }
@@ -161,4 +176,31 @@ void swdptap_init(void)
 	} else {
 		gpio_swdptap_init();
 	}
+}
+
+void test_spi_swd(void)
+{
+    ESP_LOGI("test_spi_swd", "Starting SPI SWD Tests...");
+
+    // Test 1: nbit=32, Drive
+    ESP_LOGI("test_spi_swd", "Test 1: nbit=32, Drive");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out(0xFFFFFFFF, 32);
+
+    // Test 2: nbit=32, Float
+    ESP_LOGI("test_spi_swd", "Test 2: nbit=32, Float");
+    current_dir = SWDIO_STATUS_FLOAT;
+    spi_swd_seq_out(0xFFFFFFFF, 32);
+
+    // Test 3: nbit=21, Drive
+    ESP_LOGI("test_spi_swd", "Test 3: nbit=21, Drive");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out(0x001FFFFF, 21);
+
+    // Test 4: nbit=21, Float
+    ESP_LOGI("test_spi_swd", "Test 4: nbit=21, Float");
+    current_dir = SWDIO_STATUS_FLOAT;
+    spi_swd_seq_out(0x001FFFFF, 21);
+
+    ESP_LOGI("test_spi_swd", "Tests Completed.");
 }
