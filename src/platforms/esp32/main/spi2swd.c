@@ -127,15 +127,43 @@ static void spi_swd_seq_out_parity(uint32_t data_in, size_t nbit)
 
     current_dir = SWDIO_STATUS_DRIVE;
 }
-static uint32_t spi_swd_seq_in(size_t bits)
+static uint32_t spi_swd_seq_in(size_t nbit)
 {
-	if (bits == 3) {
-		return spi_request_seq_in(g_buffered_request, g_last_op_was_read);
-	}
-	return 0;
+    uint8_t tx[8] = {0};
+    uint8_t rx[8];
+    uint8_t i = 0;
+    uint32_t rx_data = 0;
+
+    //return spi_request_seq_in(g_buffered_request, g_last_op_was_read);
+    if (nbit>32 || nbit==0){
+       ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
+       return;
+    }
+
+    uint8_t len = nbit;
+    if(current_dir == SWDIO_STATUS_DRIVE){
+        len++;//+ start TRN bit
+    }
+
+    tx[0] = (len -1) & (~FLAG_NORMAL_46B);
+
+    i=0;
+    if(len&7){
+        i++;
+    }
+    i += len >>3;
+
+    spi_device2_transfer_data(tx,rx,i);
+
+    //extract rx_data from rx[], need to shift and exclude bit-7 of rx[1] if(current_dir == SWDIO_STATUS_DRIVE)
+    //add code here:
+
+
+    current_dir = SWDIO_STATUS_FLOAT;
+	return rx_data;
 }
 
-static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t bits)
+static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
 {
 	bool parity_err = spi_dp_seq_in_parity_32bit(parity_data);
 	g_last_op_was_read = true;
