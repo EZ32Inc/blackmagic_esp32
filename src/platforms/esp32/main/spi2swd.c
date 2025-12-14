@@ -124,6 +124,17 @@ static void spi_swd_seq_out_parity(uint32_t data_in, size_t nbit)
 
     current_dir = SWDIO_STATUS_DRIVE;
 }
+
+static uint32_t reverse_bits(uint32_t data, uint8_t nbit)
+{
+    uint32_t result = 0;
+    for (uint8_t i = 0; i < nbit; i++) {
+        if ((data >> i) & 1) {
+            result |= (1UL << (nbit - 1 - i));
+        }
+    }
+    return result;
+}
 static uint32_t spi_swd_seq_in(size_t nbit)
 {
     uint8_t tx[8] = {0};
@@ -175,25 +186,11 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     }
 
     current_dir = SWDIO_STATUS_FLOAT;
-    return rx_data;
+    return reverse_bits(rx_data, nbit);
 }
 
 static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
 {
-    // This function seems to be used for reading data + parity?
-    // But the signature matches what was requested.
-    // Assuming it reads 32 bits + parity? Or nbit + parity?
-    // The original code called spi_dp_seq_in_parity_32bit(parity_data).
-    // If nbit is passed, maybe we should use it?
-    // But standard SWD read with parity is usually 32 bits + 1 parity bit.
-    // Let's stick to the original behavior for now but update signature.
-    
-    // Wait, if nbit is provided, we should probably use it if it's not 32?
-    // But spi_dp_seq_in_parity_32bit implies 32 bits.
-    // Let's assume nbit is 32 for now as per typical usage.
-    
-    bool parity_err = spi_dp_seq_in_parity_32bit(parity_data);
-    return !parity_err;
 }
 
 
