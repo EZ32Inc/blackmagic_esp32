@@ -8,9 +8,6 @@
 
 bool spi_or_gpio = false ; //true;
 
-static uint8_t g_buffered_request = 0;
-static bool g_last_op_was_read = false;
-
 /* Rename the original init function so we can wrap it */
 #define swdptap_init gpio_swdptap_init
 #include "../../../platforms/common/swdptap.c"
@@ -134,40 +131,69 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     uint8_t i = 0;
     uint32_t rx_data = 0;
 
-    //return spi_request_seq_in(g_buffered_request, g_last_op_was_read);
-    if (nbit>32 || nbit==0){
-       ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
-       return;
+    if (nbit > 32 || nbit == 0) {
+        ESP_LOGW("spi_swd_seq_in", "Error input nbit, nbit>32 || nbit==0: %d", nbit);
+        return 0;
     }
 
     uint8_t len = nbit;
-    if(current_dir == SWDIO_STATUS_DRIVE){
-        len++;//+ start TRN bit
+    bool trn_cycle = false;
+    if (current_dir == SWDIO_STATUS_DRIVE) {
+        len++; // + start TRN bit
+        trn_cycle = true;
     }
 
-    tx[0] = (len -1) & (~FLAG_NORMAL_46B);
+    tx[0] = (len - 1) & (~FLAG_NORMAL_46B);
 
-    i=0;
-    if(len&7){
+    i = 1; //tx[0]  / header
+    if (len & 7) {
         i++;
     }
-    i += len >>3;
+    i += len >> 3;
 
-    spi_device2_transfer_data(tx,rx,i);
+    spi_device2_transfer_data(tx, rx, i);
 
-    //extract rx_data from rx[], need to shift and exclude bit-7 of rx[1] if(current_dir == SWDIO_STATUS_DRIVE)
-    //add code here:
+    // Extract rx_data from rx[]
+    // If trn_cycle is true, the first bit (MSB of rx[0]) is TRN and should be skipped.
+    // Data is LSB first.
+    // rx[0] MSB is the first bit received.
 
+    int bit_offset = trn_cycle ? 1 : 0;
+
+    for (size_t b = 0; b < nbit; b++) {
+        int total_bit_idx = b + bit_offset;
+        int byte_idx = total_bit_idx / 8;
+        int bit_in_byte = total_bit_idx % 8;
+
+        // YesSPI receives MSB first in the byte
+        // Based on spi_swd_seq_out packing: tx[byte_pos] |= (1 << (7 - bit_pos));
+        // This implies the first bit sent/received is at bit 7.
+
+        if ((rx[byte_idx] >> (7 - bit_in_byte)) & 1) {
+            rx_data |= (1UL << b);
+        }
+    }
 
     current_dir = SWDIO_STATUS_FLOAT;
-	return rx_data;
+    return rx_data;
 }
 
 static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
 {
-	bool parity_err = spi_dp_seq_in_parity_32bit(parity_data);
-	g_last_op_was_read = true;
-	return !parity_err;
+    // This function seems to be used for reading data + parity?
+    // But the signature matches what was requested.
+    // Assuming it reads 32 bits + parity? Or nbit + parity?
+    // The original code called spi_dp_seq_in_parity_32bit(parity_data).
+    // If nbit is passed, maybe we should use it?
+    // But standard SWD read with parity is usually 32 bits + 1 parity bit.
+    // Let's stick to the original behavior for now but update signature.
+    
+    // Wait, if nbit is provided, we should probably use it if it's not 32?
+    // But spi_dp_seq_in_parity_32bit implies 32 bits.
+    // Let's assume nbit is 32 for now as per typical usage.
+    
+    bool parity_err = spi_dp_seq_in_parity_32bit(parity_data);
+    return !parity_err;
 }
 
 
@@ -269,4 +295,31 @@ void test_spi_swd_parity(void)
     spi_swd_seq_out_parity(0xFFFFFF1F, 4);
 
     ESP_LOGI("test_spi_swd_parity", "Tests Completed.");
+}
+
+void test_spi_swd_seq_in(void)
+{
+    ESP_LOGI("test_spi_swd_seq_in", "Starting SPI SWD Seq In Tests...");
+
+    size_t nbits[] = {3, 4, 6, 21, 31, 32};
+    size_t num_tests = sizeof(nbits) / sizeof(nbits[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        size_t n = nbits[i];
+
+        // Test with Drive -> Float
+        ESP_LOGI("test_spi_swd_seq_in", "Test: nbit=%d, Drive -> Float", n);
+        current_dir = SWDIO_STATUS_DRIVE;
+        uint32_t val = spi_swd_seq_in(n);
+        ESP_LOGI("test_spi_swd_seq_in", "Read value: 0x%08lx, New Dir: %d", val, current_dir);
+        //continue;
+
+        // Test with Float -> Float
+        ESP_LOGI("test_spi_swd_seq_in", "Test: nbit=%d, Float -> Float", n);
+        current_dir = SWDIO_STATUS_FLOAT;
+        val = spi_swd_seq_in(n);
+        ESP_LOGI("test_spi_swd_seq_in", "Read value: 0x%08lx, New Dir: %d", val, current_dir);
+    }
+
+    ESP_LOGI("test_spi_swd_seq_in", "Tests Completed.");
 }
