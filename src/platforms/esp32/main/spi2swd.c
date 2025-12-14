@@ -62,37 +62,70 @@ static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
 
 static void spi_swd_seq_out_parity(uint32_t data_in, size_t nbit)
 {
-    uint8_t tx[8];
+    if (nbit > 32 || nbit == 0) {
+        ESP_LOGW("spi_swd_seq_out_parity", "Error input nbit, nbit>32 || nbit==0: %d", nbit);
+        return;
+    }
+
+    uint8_t tx[8] = {0};
     uint8_t rx[8];
-    uint8_t i=0;
-    uint32_t data   = reverse_bits32(data_in); //to send out data from LSB to MSB
-    uint64_t data64 = reverse_bits32(data_in); //to send out data from LSB to MSB
-    uint8_t parity  = __builtin_popcount(data) & 1;
-    data64 <<= 1;
-    data64 |= parity;
+    uint8_t i = 0;
 
-    if (nbit>32 || nbit==0){
-       ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
-       return;
+    // Mask data_in to ensure we only count bits within nbit
+    if (nbit < 32) {
+        data_in &= (1UL << nbit) - 1;
     }
 
-    uint8_t len = nbit + 1; //+ parity bit
-    if(current_dir == SWDIO_STATUS_FLOAT){
-        len++;//+ start TRN bit
-        //spi_dp_seq_out_parity_32bit(data);
-        ESP_LOGD("spi_swd_seq_out_parity", "data_in=0x%08lx %d bits", data_in, len);
-        tx[i++] = (len -1 | FLAG_DIO_WR) & (~FLAG_NORMAL_46B); //34bit :TRN+32-bit data+Parity
-        //For len of 34: 
-        //tx[i++] = data>>25; //BIT0 of SWD data is TRN bit, because last is a request and TRN needs to be following bit
-        //tx[i++] = data>>17;
-        //tx[i++] = data>>9;
-        //tx[i++] = data>>1;
-        //tx[i++] = ((data & 1)<<7) | ((__builtin_popcount(data) & 1)<<6); //last bit of data + parity
-        spi_device2_transfer_data(tx,rx,i);
+    uint8_t parity = __builtin_popcount(data_in) & 1;
+
+    uint8_t total_bits = nbit + 1; // data + parity
+    if (current_dir == SWDIO_STATUS_FLOAT) {
+        total_bits++; // + TRN
     }
+
+    ESP_LOGD("spi_swd_seq_out_parity", "data_in=0x%08lx %d bits", data_in, total_bits);
+
+    // Header byte
+    tx[i++] = ((total_bits - 1) | FLAG_DIO_WR) & (~FLAG_NORMAL_46B);
+
+    int bit_pos = 0;
+    int byte_pos = i;
+    tx[byte_pos] = 0; // Initialize first data byte
+
+    // 1. TRN (if needed)
+    if (current_dir == SWDIO_STATUS_FLOAT) {
+        // TRN is 0. Just advance.
+        bit_pos++;
+    }
+
+    // 2. Data
+    for (size_t b = 0; b < nbit; b++) {
+        if ((data_in >> b) & 1) {
+            tx[byte_pos] |= (1 << (7 - bit_pos));
+        }
+        bit_pos++;
+        if (bit_pos == 8) {
+            bit_pos = 0;
+            byte_pos++;
+            tx[byte_pos] = 0;
+        }
+    }
+
+    // 3. Parity
+    if (parity) {
+        tx[byte_pos] |= (1 << (7 - bit_pos));
+    }
+    bit_pos++;
+    if (bit_pos == 8) {
+        bit_pos = 0;
+        byte_pos++;
+    }
+
+    int len_bytes = byte_pos + (bit_pos > 0 ? 1 : 0);
+
+    spi_device2_transfer_data(tx, rx, len_bytes);
 
     current_dir = SWDIO_STATUS_DRIVE;
-    return;
 }
 static uint32_t spi_swd_seq_in(size_t bits)
 {
@@ -153,4 +186,59 @@ void test_spi_swd(void)
     spi_swd_seq_out(0x001FFFFF, 21);
 
     ESP_LOGI("test_spi_swd", "Tests Completed.");
+}
+
+void test_spi_swd_parity(void)
+{
+    ESP_LOGI("test_spi_swd_parity", "Starting SPI SWD Parity Tests...");
+
+    // Test 1: nbit=32, Drive, Even Parity Data (0xFFFFFFFF has 32 ones -> even -> parity 0)
+    // Wait, 0xFFFFFFFF has 32 ones. popcount(0xFFFFFFFF) = 32. 32 & 1 = 0.
+    ESP_LOGI("test_spi_swd_parity", "Test 1: nbit=32, Drive, Data=0xFFFFFFFF (Parity 0)");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0xFFFFFFFF, 32);
+
+    // Test 2: nbit=32, Drive, Odd Parity Data (0xFFFFFFFE has 31 ones -> odd -> parity 1)
+    ESP_LOGI("test_spi_swd_parity", "Test 2: nbit=32, Drive, Data=0xFFFFFFFE (Parity 1)");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0xFFFFFFFE, 32);
+
+    // Test 3: nbit=32, Float, Data=0xFFFFFFFF
+    ESP_LOGI("test_spi_swd_parity", "Test 3: nbit=32, Float, Data=0xFFFFFFFF");
+    current_dir = SWDIO_STATUS_FLOAT;
+    spi_swd_seq_out_parity(0xFFFFFFFF, 32);
+
+    // Test 4: nbit=4, Drive, Data=0xF (Parity 0)
+    ESP_LOGI("test_spi_swd_parity", "Test 4: nbit=4, Drive, Data=0xF");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0xF, 4);
+
+    // Test 5: nbit=9, Drive, Data=0x155 (101010101 -> 5 ones -> parity 1)
+    ESP_LOGI("test_spi_swd_parity", "Test 5: nbit=9, Drive, Data=0x155 (Parity 1)");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0x155, 9);
+
+    // Test 6: nbit=12, Float, Data=0xABC (1010 1011 1100 -> 6 ones -> parity 0)
+    ESP_LOGI("test_spi_swd_parity", "Test 6: nbit=12, Float, Data=0xABC (Parity 0)");
+    current_dir = SWDIO_STATUS_FLOAT;
+    spi_swd_seq_out_parity(0xABC, 12);
+
+    // Test 7: nbit=21, Drive, Data=0x1FFFFF (21 ones -> parity 1)
+    ESP_LOGI("test_spi_swd_parity", "Test 7: nbit=21, Drive, Data=0x1FFFFF (Parity 1)");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0x1FFFFF, 21);
+
+    // Test 8: nbit=31, Float, Data=0x7FFFFFFF (31 ones -> parity 1)
+    ESP_LOGI("test_spi_swd_parity", "Test 8: nbit=31, Float, Data=0x7FFFFFFF (Parity 1)");
+    current_dir = SWDIO_STATUS_FLOAT;
+    spi_swd_seq_out_parity(0x7FFFFFFF, 31);
+
+    // Test 9: nbit=4, Drive, Data=0xF with garbage (0xFFFFFF1F -> 5 ones if unmasked, 4 ones if masked -> parity 0)
+    // If unmasked: popcount(0xFFFFFF1F) = 29 (odd) -> parity 1.
+    // If masked: popcount(0xF) = 4 (even) -> parity 0.
+    ESP_LOGI("test_spi_swd_parity", "Test 9: nbit=4, Drive, Data=0xFFFFFF1F (Garbage bits, Parity 0)");
+    current_dir = SWDIO_STATUS_DRIVE;
+    spi_swd_seq_out_parity(0xFFFFFF1F, 4);
+
+    ESP_LOGI("test_spi_swd_parity", "Tests Completed.");
 }

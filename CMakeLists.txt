@@ -118,7 +118,7 @@ src/target/msp432p4.c
 src/target/mspm0.c
 src/target/zynq7000.c
 src/platforms/common/jtagtap.c
-src/platforms/common/swdptap.c
+#src/platforms/common/swdptap.c
 #src/platforms/common/blackpill-f4/blackpill-f4.c
 #src/platforms/common/aux_serial.c
 #src/platforms/common/usb.c
