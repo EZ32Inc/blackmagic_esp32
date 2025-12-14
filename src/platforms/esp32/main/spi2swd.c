@@ -27,7 +27,7 @@ static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
 
     uint8_t len = nbit;
     if(current_dir == SWDIO_STATUS_FLOAT){
-        len++;//and start TRN bit
+        len++;//+ start TRN bit
     }
 
     uint8_t tx[8];
@@ -60,6 +60,40 @@ static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
     return;
 }
 
+static void spi_swd_seq_out_parity(uint32_t data_in, size_t nbit)
+{
+    uint8_t tx[8];
+    uint8_t rx[8];
+    uint8_t i=0;
+    uint32_t data   = reverse_bits32(data_in); //to send out data from LSB to MSB
+    uint64_t data64 = reverse_bits32(data_in); //to send out data from LSB to MSB
+    uint8_t parity  = __builtin_popcount(data) & 1;
+    data64 <<= 1;
+    data64 |= parity;
+
+    if (nbit>32 || nbit==0){
+       ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
+       return;
+    }
+
+    uint8_t len = nbit + 1; //+ parity bit
+    if(current_dir == SWDIO_STATUS_FLOAT){
+        len++;//+ start TRN bit
+        //spi_dp_seq_out_parity_32bit(data);
+        ESP_LOGD("spi_swd_seq_out_parity", "data_in=0x%08lx %d bits", data_in, len);
+        tx[i++] = (len -1 | FLAG_DIO_WR) & (~FLAG_NORMAL_46B); //34bit :TRN+32-bit data+Parity
+        //For len of 34: 
+        //tx[i++] = data>>25; //BIT0 of SWD data is TRN bit, because last is a request and TRN needs to be following bit
+        //tx[i++] = data>>17;
+        //tx[i++] = data>>9;
+        //tx[i++] = data>>1;
+        //tx[i++] = ((data & 1)<<7) | ((__builtin_popcount(data) & 1)<<6); //last bit of data + parity
+        spi_device2_transfer_data(tx,rx,i);
+    }
+
+    current_dir = SWDIO_STATUS_DRIVE;
+    return;
+}
 static uint32_t spi_swd_seq_in(size_t bits)
 {
 	if (bits == 3) {
@@ -75,11 +109,6 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t bits)
 	return !parity_err;
 }
 
-static void spi_swd_seq_out_parity(uint32_t data, size_t bits)
-{
-	spi_dp_seq_out_parity_32bit(data);
-	g_last_op_was_read = false;
-}
 
 void spi_swd_init(void)
 {
