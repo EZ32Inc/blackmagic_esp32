@@ -5,5 +5,6 @@ void spi_swd_init(void);
 void test_spi_swd(void);
 void test_spi_swd_parity(void);
 void test_spi_swd_seq_in(void);
+void test_spi_swd_seq_in_parity(void);
 
 #endif

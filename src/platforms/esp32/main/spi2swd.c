@@ -6,7 +6,7 @@
 
 #include "esp_log.h"
 
-bool spi_or_gpio = false ; //true;
+bool spi_or_gpio = true; //false ; //true;
 
 /* Rename the original init function so we can wrap it */
 #define swdptap_init gpio_swdptap_init
@@ -188,9 +188,77 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     current_dir = SWDIO_STATUS_FLOAT;
     return reverse_bits(rx_data, nbit);
 }
-
+/*
+   It is very similar to spi_swd_seq_in(), but it will read one more bit at the end and save it as parity bit. 
+   it then put the reversed data in *parity_data, calculate parity of *parity_data,
+   if it is the same as received parity bit we return true, else return false.
+   */
 static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
 {
+    uint8_t tx[8] = {0};
+    uint8_t rx[8];
+    uint8_t i = 0;
+    uint32_t rx_data = 0;
+    uint8_t parity_bit = 0;
+
+    if (nbit > 32 || nbit == 0) {
+        ESP_LOGW("spi_swd_seq_in_parity", "Error input nbit, nbit>32 || nbit==0: %d", nbit);
+        return false;
+    }
+
+    uint8_t len = nbit + 1; // + parity bit
+    bool trn_cycle = false;
+    if (current_dir == SWDIO_STATUS_DRIVE) {
+        len++; // + start TRN bit
+        trn_cycle = true;
+    }
+
+    tx[0] = (len - 1) & (~FLAG_NORMAL_46B);
+
+    i = 1; // tx[0] / header
+    if (len & 7) {
+        i++;
+    }
+    i += len >> 3;
+
+    spi_device2_transfer_data(tx, rx, i);
+
+    // Extract rx_data and parity from rx[]
+    int bit_offset = trn_cycle ? 1 : 0;
+
+    // Extract data bits
+    for (size_t b = 0; b < nbit; b++) {
+        int total_bit_idx = b + bit_offset;
+        int byte_idx = total_bit_idx / 8;
+        int bit_in_byte = total_bit_idx % 8;
+
+        if ((rx[byte_idx] >> (7 - bit_in_byte)) & 1) {
+            rx_data |= (1UL << b);
+        }
+    }
+
+    // Extract parity bit (it's the bit after data)
+    int parity_bit_idx = nbit + bit_offset;
+    int parity_byte_idx = parity_bit_idx / 8;
+    int parity_bit_in_byte = parity_bit_idx % 8;
+    if ((rx[parity_byte_idx] >> (7 - parity_bit_in_byte)) & 1) {
+        parity_bit = 1;
+    }
+
+    current_dir = SWDIO_STATUS_FLOAT;
+
+    // Reverse data bits
+    *parity_data = reverse_bits(rx_data, nbit);
+
+    // Mask parity_data to ensure no garbage bits are processed
+    if (nbit < 32) {
+        *parity_data &= (1UL << nbit) - 1;
+    }
+
+    // Calculate parity of received data
+    uint8_t calculated_parity = __builtin_popcount(*parity_data) & 1;
+
+    return (calculated_parity == parity_bit);
 }
 
 
@@ -200,6 +268,7 @@ void spi_swd_init(void)
 	swd_proc.seq_out = spi_swd_seq_out;
 	swd_proc.seq_in_parity = spi_swd_seq_in_parity;
 	swd_proc.seq_out_parity = spi_swd_seq_out_parity;
+    ESP_LOGI("spi_swd_init", "spi_swd_init() done\n");
 }
 
 /* Wrapper init function */
@@ -319,4 +388,32 @@ void test_spi_swd_seq_in(void)
     }
 
     ESP_LOGI("test_spi_swd_seq_in", "Tests Completed.");
+}
+
+void test_spi_swd_seq_in_parity(void)
+{
+    ESP_LOGI("test_spi_swd_seq_in_parity", "Starting SPI SWD Seq In Parity Tests...");
+
+    size_t nbits[] = {3, 4, 6, 21, 31, 32};
+    size_t num_tests = sizeof(nbits) / sizeof(nbits[0]);
+
+    for (size_t i = 0; i < num_tests; i++) {
+        size_t n = nbits[i];
+        uint32_t parity_data = 0;
+        bool res;
+
+        // Test with Drive -> Float
+        ESP_LOGI("test_spi_swd_seq_in_parity", "Test: nbit=%d, Drive -> Float", n);
+        current_dir = SWDIO_STATUS_DRIVE;
+        res = spi_swd_seq_in_parity(&parity_data, n);
+        ESP_LOGI("test_spi_swd_seq_in_parity", "Result: %s, Data: 0x%08lx, New Dir: %d", res ? "OK" : "FAIL", parity_data, current_dir);
+
+        // Test with Float -> Float
+        ESP_LOGI("test_spi_swd_seq_in_parity", "Test: nbit=%d, Float -> Float", n);
+        current_dir = SWDIO_STATUS_FLOAT;
+        res = spi_swd_seq_in_parity(&parity_data, n);
+        ESP_LOGI("test_spi_swd_seq_in_parity", "Result: %s, Data: 0x%08lx, New Dir: %d", res ? "OK" : "FAIL", parity_data, current_dir);
+    }
+
+    ESP_LOGI("test_spi_swd_seq_in_parity", "Tests Completed.");
 }
