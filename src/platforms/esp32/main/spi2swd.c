@@ -6,7 +6,7 @@
 
 #include "esp_log.h"
 
-bool spi_or_gpio = true; //false ; //true;
+bool SPI_nGPIO = true; //false, GPIO ; true, SPI ; Global variable
 
 /* Rename the original init function so we can wrap it */
 #define swdptap_init gpio_swdptap_init
@@ -170,13 +170,14 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     // rx[0] MSB is the first bit received.
 
     int bit_offset = trn_cycle ? 1 : 0;
+    bit_offset += 8; //skip first control byte
 
     for (size_t b = 0; b < nbit; b++) {
         int total_bit_idx = b + bit_offset;
         int byte_idx = total_bit_idx / 8;
         int bit_in_byte = total_bit_idx % 8;
 
-        // YesSPI receives MSB first in the byte
+        // Yes SPI receives MSB first in the byte
         // Based on spi_swd_seq_out packing: tx[byte_pos] |= (1 << (7 - bit_pos));
         // This implies the first bit sent/received is at bit 7.
 
@@ -225,6 +226,7 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
 
     // Extract rx_data and parity from rx[]
     int bit_offset = trn_cycle ? 1 : 0;
+    bit_offset += 8; //skip first control byte
 
     // Extract data bits
     for (size_t b = 0; b < nbit; b++) {
@@ -274,7 +276,7 @@ void spi_swd_init(void)
 /* Wrapper init function */
 void swdptap_init(void)
 {
-	if (spi_or_gpio) {
+	if (SPI_nGPIO) {
 		spi_swd_init();
 	} else {
 		gpio_swdptap_init();
