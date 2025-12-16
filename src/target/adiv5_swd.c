@@ -152,6 +152,7 @@ uint32_t adiv5_swd_read_no_check(const uint16_t addr)
 	uint32_t data = 0;
 	swd_proc.seq_in_parity(&data, 32U);
 	swd_proc.seq_out(0, 8U);
+    //printf("adiv5_swd_read_no_check: res=0x%x data=0x%08lx\n", res, data);
 	return res == SWD_ACK_OK ? data : 0;
 }
 

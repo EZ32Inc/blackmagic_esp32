@@ -124,7 +124,7 @@ static void spi_swd_seq_out_parity(uint32_t data_in, size_t nbit)
 
     current_dir = SWDIO_STATUS_DRIVE;
 }
-
+#if 0
 static uint32_t reverse_bits(uint32_t data, uint8_t nbit)
 {
     uint32_t result = 0;
@@ -135,6 +135,7 @@ static uint32_t reverse_bits(uint32_t data, uint8_t nbit)
     }
     return result;
 }
+#endif
 static uint32_t spi_swd_seq_in(size_t nbit)
 {
     uint8_t tx[8] = {0};
@@ -163,7 +164,13 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     i += len >> 3;
 
     spi_device2_transfer_data(tx, rx, i);
-
+#if 0
+    printf("spi_swd_seq_in(): nbit=%d i=%d len=%d\n", nbit,i,len);
+    for(uint8_t j =0;j<i;++j){
+        printf("tx[%d]=0x%02x, rx[%d]=0x%02x\n", j, tx[j], j, rx[j]);
+    }
+    printf("\n");
+#endif
     // Extract rx_data from rx[]
     // If trn_cycle is true, the first bit (MSB of rx[0]) is TRN and should be skipped.
     // Data is LSB first.
@@ -187,7 +194,7 @@ static uint32_t spi_swd_seq_in(size_t nbit)
     }
 
     current_dir = SWDIO_STATUS_FLOAT;
-    return reverse_bits(rx_data, nbit);
+    return rx_data;//reverse_bits(rx_data, nbit);
 }
 /*
    It is very similar to spi_swd_seq_in(), but it will read one more bit at the end and save it as parity bit. 
@@ -223,7 +230,12 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
     i += len >> 3;
 
     spi_device2_transfer_data(tx, rx, i);
-
+#if 0
+    printf("spi_swd_seq_in_parity(): nbit=%d i=%d len=%d\n", nbit,i,len);
+    for(uint8_t j =0;j<i;++j){
+        printf("tx[%d]=0x%02x, rx[%d]=0x%02x\n", j, tx[j], j, rx[j]);
+    }
+#endif
     // Extract rx_data and parity from rx[]
     int bit_offset = trn_cycle ? 1 : 0;
     bit_offset += 8; //skip first control byte
@@ -250,7 +262,7 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
     current_dir = SWDIO_STATUS_FLOAT;
 
     // Reverse data bits
-    *parity_data = reverse_bits(rx_data, nbit);
+    *parity_data = rx_data;//reverse_bits(rx_data, nbit);
 
     // Mask parity_data to ensure no garbage bits are processed
     if (nbit < 32) {
@@ -260,6 +272,7 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
     // Calculate parity of received data
     uint8_t calculated_parity = __builtin_popcount(*parity_data) & 1;
 
+    //printf("calculated_parity=%d p=%d\n", calculated_parity, calculated_parity == parity_bit);
     return (calculated_parity == parity_bit);
 }
 
