@@ -105,10 +105,15 @@ void pins_init() {
     //configure GPIO with the given settings
     gpio_config(&io_conf);
 
-    //
+    //set SWDIO_RDnWR_PIN
     gpio_set_direction(SWDIO_RDnWR_PIN, GPIO_MODE_OUTPUT);
     SWDIO_MODE_FLOAT();
     //gpio_set_level(SWDIO_RDnWR_PIN, 1);
+
+    //set TDO:
+    gpio_set_direction(TDO_PIN, GPIO_MODE_INPUT);
+    //gpio_set_pull_mode(TDO_PIN, GPIO_FLOATING);
+
 }
 
 void platform_init()//int argc, char **argv)
@@ -199,6 +204,7 @@ bool platform_timeout_is_expired(const platform_timeout_s *t)
 
 void platform_nrst_set_val(bool assert)
 {
+    /*
 	if (assert) {
 		gpio_set_direction(NRST_PIN, GPIO_MODE_OUTPUT);
 		gpio_set_level(NRST_PIN, 0);
@@ -206,11 +212,13 @@ void platform_nrst_set_val(bool assert)
 		gpio_set_direction(NRST_PIN, GPIO_MODE_INPUT);
 		gpio_set_pull_mode(NRST_PIN, GPIO_PULLUP_ONLY);
 	}
+    */
 }
 
 bool platform_nrst_get_val(void)
 {
-	return gpio_get_level(NRST_PIN) == 0;
+	//return gpio_get_level(NRST_PIN) == 0;
+    return 0;
 }
 
 void platform_target_clk_output_enable(bool enable)
