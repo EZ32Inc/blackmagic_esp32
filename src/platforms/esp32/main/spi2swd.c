@@ -14,9 +14,15 @@ bool SPI_nGPIO = true; //false, GPIO ; true, SPI ; Global variable
 #undef swdptap_init
 
 static swdio_status_t current_dir = SWDIO_STATUS_DRIVE;
+static TickType_t last_yield_time = 0;
 
 static void spi_swd_seq_out(uint32_t data_in, size_t nbit)
 {
+    if (xTaskGetTickCount() - last_yield_time > pdMS_TO_TICKS(100)) {
+        vTaskDelay(1);
+        last_yield_time = xTaskGetTickCount();
+    }
+
     if (nbit>32 || nbit==0){
        ESP_LOGW("spi_swd_seq_out", "Error input nbit, nbit>32 || nbit==0: %d",nbit);
        return;
@@ -138,6 +144,11 @@ static uint32_t reverse_bits(uint32_t data, uint8_t nbit)
 #endif
 static uint32_t spi_swd_seq_in(size_t nbit)
 {
+    if (xTaskGetTickCount() - last_yield_time > pdMS_TO_TICKS(100)) {
+        vTaskDelay(1);
+        last_yield_time = xTaskGetTickCount();
+    }
+
     uint8_t tx[8] = {0};
     uint8_t rx[8];
     uint8_t i = 0;

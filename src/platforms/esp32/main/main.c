@@ -78,6 +78,7 @@ static void bmp_poll_loop(void)
 #ifdef PLATFORM_HAS_TRACESWO
 		poll_swo_host();
 #endif
+        //vTaskDelay(pdMS_TO_TICKS(1));
 	}
 
 	SET_IDLE_STATE(true);
@@ -120,6 +121,7 @@ int esp32_main(void)
 		if (shutdown_bmda)
 			break;
 #endif
+        //vTaskDelay(pdMS_TO_TICKS(1));
 	}
 
 	target_list_free();
