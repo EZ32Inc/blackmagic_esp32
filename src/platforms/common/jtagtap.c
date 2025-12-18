@@ -29,6 +29,22 @@
 #include "jtagtap.h"
 #include "adiv5.h"
 
+#ifdef ESP_PLATFORM
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+static TickType_t last_yield_time_jtag = 0;
+static void platform_jtag_yield(void)
+{
+	if (xTaskGetTickCount() - last_yield_time_jtag > pdMS_TO_TICKS(100)) {
+		vTaskDelay(1);
+		last_yield_time_jtag = xTaskGetTickCount();
+	}
+}
+#define PLATFORM_JTAG_YIELD() platform_jtag_yield()
+#else
+#define PLATFORM_JTAG_YIELD()
+#endif
+
 jtag_proc_s jtag_proc;
 
 static void jtagtap_reset(void);
@@ -129,6 +145,7 @@ static bool jtagtap_next(const bool tms, const bool tdi)
 static void jtagtap_tms_seq_clk_delay(uint32_t tms_states, const size_t clock_cycles)
 {
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		const bool state = tms_states & 1U;
 		gpio_set_val(TMS_PORT, TMS_PIN, state);
 		gpio_set(TCK_PORT, TCK_PIN);
@@ -145,6 +162,7 @@ static void jtagtap_tms_seq_no_delay(uint32_t tms_states, const size_t clock_cyc
 {
 	bool state = tms_states & 1U;
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		gpio_set_val(TMS_PORT, TMS_PIN, state);
 		gpio_set(TCK_PORT, TCK_PIN);
 		/* Block the compiler from re-ordering the TMS states calculation to preserve timings */
@@ -171,6 +189,7 @@ static void jtagtap_tdi_tdo_seq_clk_delay(
 {
 	uint8_t value = 0;
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		/* Calculate the next bit and byte to consume data from */
 		const uint8_t bit = cycle & 7U;
 		const size_t byte = cycle >> 3U;
@@ -206,6 +225,7 @@ static void jtagtap_tdi_tdo_seq_no_delay(
 {
 	uint8_t value = 0;
 	for (size_t cycle = 0; cycle < clock_cycles;) {
+		PLATFORM_JTAG_YIELD();
 		/* Calculate the next bit and byte to consume data from */
 		const uint8_t bit = cycle & 7U;
 		const size_t byte = cycle >> 3U;
@@ -261,6 +281,7 @@ static void jtagtap_tdi_tdo_seq(
 static void jtagtap_tdi_seq_clk_delay(const uint8_t *const data_in, const bool final_tms, size_t clock_cycles)
 {
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		const uint8_t bit = cycle & 7U;
 		const size_t byte = cycle >> 3U;
 		/* On the last tick, assert final_tms to TMS_PIN */
@@ -280,6 +301,7 @@ static void jtagtap_tdi_seq_clk_delay(const uint8_t *const data_in, const bool f
 static void jtagtap_tdi_seq_no_delay(const uint8_t *const data_in, const bool final_tms, size_t clock_cycles)
 {
 	for (size_t cycle = 0; cycle < clock_cycles;) {
+		PLATFORM_JTAG_YIELD();
 		const uint8_t bit = cycle & 7U;
 		const size_t byte = cycle >> 3U;
 		const bool tms = cycle + 1U >= clock_cycles && final_tms;
@@ -320,6 +342,7 @@ static void jtagtap_tdi_seq(const bool final_tms, const uint8_t *const data_in, 
 static void jtagtap_cycle_clk_delay(const size_t clock_cycles)
 {
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		gpio_set(TCK_PORT, TCK_PIN);
 		for (volatile uint32_t counter = target_clk_divider; counter > 0; --counter)
 			continue;
@@ -332,6 +355,7 @@ static void jtagtap_cycle_clk_delay(const size_t clock_cycles)
 static void jtagtap_cycle_no_delay(const size_t clock_cycles)
 {
 	for (size_t cycle = 0; cycle < clock_cycles; ++cycle) {
+		PLATFORM_JTAG_YIELD();
 		gpio_set(TCK_PORT, TCK_PIN);
 		__asm__ volatile("nop" ::: "memory");
 		gpio_clear(TCK_PORT, TCK_PIN);

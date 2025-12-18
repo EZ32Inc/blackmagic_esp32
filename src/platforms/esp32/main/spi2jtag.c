@@ -3,6 +3,8 @@
 #include "jtagtap.h"
 #include "spi_common.h"
 
+#include "spi_common.h"
+
 /* Rename the original init function so we can wrap it */
 #define jtagtap_init gpio_jtagtap_init
 #include "../../../platforms/common/jtagtap.c"
