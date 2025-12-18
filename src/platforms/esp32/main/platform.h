@@ -44,11 +44,18 @@
 #include <freertos/FreeRTOS.h>
 
 #define TMS_SET_MODE() do { } while (0)
-
-#define TMS_PIN (41) //(40)
-#define TDI_PIN (40) //(47)
-#define TDO_PIN (15) //(41)
-#define TCK_PIN (47) //(15)
+/*
+P3:
+IO PIN      I/O         JTAG        SWDIO           ESP32 GPIO
+IO08        Input       TDO         Voltage in      GPIO15
+IO09        Inout       TMS         SWDIO           GPIO41
+IO10        Inout       TCK         SWCLK           GPIO47
+IO11        Inout       TDI         NRST out        GPIO40  
+*/
+#define TMS_PIN (41)
+#define TDI_PIN (40)
+#define TDO_PIN (15)
+#define TCK_PIN (47)
 //#define NRST_PIN (6)
 
 #define PLATFORM_HAS_TRACESWO 1 

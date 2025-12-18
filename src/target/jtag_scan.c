@@ -174,8 +174,10 @@ static bool jtag_read_idcodes(void)
 		 * If the IDCode read is all 1's, we've reached the end, similarly if it's all 0's
 		 * then something's wrong or we hit a bugged device in the chain and we're done.
 		 */
-		if (idcode == 0xffffffffU)
+		if (idcode == 0xffffffffU){
+            printf("all-1 ID code found\n");
 			break;
+        }
 		if (idcode == 0U) {
 			DEBUG_WARN("Bugged all-0 ID code found, considering scan complete\n");
 			break;
@@ -188,6 +190,7 @@ static bool jtag_read_idcodes(void)
 		}
 		/* We got a valid device, add it to the set */
 		jtag_devs[device].jd_idcode = idcode;
+        printf("aWe got a valid device ID code: 0x%08lx\n", idcode);
 	}
 
 	/* Well, it worked, so clean up and do housekeeping */

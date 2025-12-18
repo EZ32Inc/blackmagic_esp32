@@ -26,6 +26,12 @@
 #include "swd.h"
 #include "maths_utils.h"
 
+#ifdef ESP_PLATFORM
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+static TickType_t last_yield_time_swdp_tap = 0;
+#endif
+
 #if !defined(SWDIO_IN_PORT)
 #define SWDIO_IN_PORT SWDIO_PORT
 #endif
@@ -152,6 +158,12 @@ static uint32_t swdptap_seq_in_no_delay(const size_t clock_cycles)
 
 static uint32_t swdptap_seq_in(size_t clock_cycles)
 {
+#ifdef ESP_PLATFORM
+    if (xTaskGetTickCount() - last_yield_time_swdp_tap > pdMS_TO_TICKS(100)) {
+        vTaskDelay(1);
+        last_yield_time_swdp_tap = xTaskGetTickCount();
+    }
+#endif
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
 	if (target_clk_divider != UINT32_MAX)
 		return swdptap_seq_in_clk_delay(clock_cycles);
@@ -241,6 +253,12 @@ static void swdptap_seq_out_no_delay(const uint32_t tms_states, const size_t clo
 
 static void swdptap_seq_out(const uint32_t tms_states, const size_t clock_cycles)
 {
+#ifdef ESP_PLATFORM
+    if (xTaskGetTickCount() - last_yield_time_swdp_tap > pdMS_TO_TICKS(100)) {
+        vTaskDelay(1);
+        last_yield_time_swdp_tap = xTaskGetTickCount();
+    }
+#endif
 	swdptap_turnaround(SWDIO_STATUS_DRIVE);
 	if (target_clk_divider != UINT32_MAX)
 		swdptap_seq_out_clk_delay(tms_states, clock_cycles);
