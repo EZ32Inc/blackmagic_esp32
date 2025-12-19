@@ -41,7 +41,6 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 
 	size_t bits_left = bits;
 	while (bits_left > 256) {
-		PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 		tx[0] = 255; // counter (256 - 1)
 		for (uint32_t j = 0; j < 64; ++j) {
 			tx[j + 1] = data_out;
@@ -70,6 +69,7 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 	} else {
 		spi_device2_transfer_data(tx, rx, i + 1); // Send header + full bytes
 	}
+    PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 }
 
 //tdi_out set to 1, tms_out set to tms&1, generate bits of tck_out
@@ -316,4 +316,43 @@ void jtagtap_init(void)
 	} else {
 		gpio_jtagtap_init();
 	}
+}
+
+void test_spi_jtag_tmstdi_seq(void)
+{
+    ESP_LOGI("test_spi", "Starting spi_jtag_tmstdi_seq hardware test");
+
+    // Test 1: 1 bit, TMS=1, TDI=0
+    // Should send 1 byte (header=0) + 1 byte data
+    ESP_LOGI("test_spi", "Test 1: 1 bit, TMS=1, TDI=0");
+    spi_jtag_tmstdi_seq(1, 0, 1);
+
+    // Test 2: 4 bits, TMS=0, TDI=1
+    // Should send 1 byte (header=3) + 1 byte data
+    ESP_LOGI("test_spi", "Test 2: 4 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(0, 1, 4);
+
+    // Test 3: 5 bits, TMS=1, TDI=1
+    // Should send 1 byte (header=4) + 2 bytes data
+    ESP_LOGI("test_spi", "Test 3: 5 bits, TMS=1, TDI=1");
+    spi_jtag_tmstdi_seq(1, 1, 5);
+
+    // Test 4: 8 bits, TMS=0, TDI=0
+    // Should send 1 byte (header=7) + 2 bytes data
+    ESP_LOGI("test_spi", "Test 4: 8 bits, TMS=0, TDI=0");
+    spi_jtag_tmstdi_seq(0, 0, 8);
+
+    // Test 5: 256 bits, TMS=1, TDI=0
+    // Should send 1 byte (header=255) + 64 bytes data
+    ESP_LOGI("test_spi", "Test 5: 256 bits, TMS=1, TDI=0");
+    spi_jtag_tmstdi_seq(1, 0, 256);
+
+    // Test 6: 257 bits, TMS=0, TDI=1
+    // Should send:
+    // 1. 1 byte (header=255) + 64 bytes data
+    // 2. 1 byte (header=0) + 1 byte data
+    ESP_LOGI("test_spi", "Test 6: 257 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(0, 1, 257);
+
+    ESP_LOGI("test_spi", "Finished spi_jtag_tmstdi_seq hardware test");
 }
