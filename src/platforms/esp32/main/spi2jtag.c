@@ -21,13 +21,75 @@
 #include <string.h>
 #include "esp_log.h"
 
+//tdi_out set to tdi&1, tms_out set to tms&1, generate bits of tck_out
+//each spi clk will generate one tck and with same tms and tdi
+static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
+{
+	if (bits == 0) return;
+
+	uint8_t tx[65];
+	uint8_t rx[65];
+	uint8_t tms_tdi = ((tms & 1) << 1) | (tdi & 1);
+	uint8_t data_out = 0;
+	uint32_t i = 0;
+	
+	// Construct the byte with 4 sets of (TMS, TDI)
+	for (i = 0; i < 4; ++i) {
+		data_out <<= 2;
+		data_out |= tms_tdi;
+	}
+
+	size_t bits_left = bits;
+	while (bits_left > 256) {
+		PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
+		tx[0] = 255; // counter (256 - 1)
+		for (uint32_t j = 0; j < 64; ++j) {
+			tx[j + 1] = data_out;
+		}
+		spi_device2_transfer_data(tx, rx, 65);
+		bits_left -= 256;
+	}
+
+	if (bits_left == 0)
+		return;
+
+	tx[0] = bits_left - 1; // counter - 1
+	
+	// Calculate full bytes needed (4 bits per byte)
+	size_t full_bytes = bits_left / 4;
+	
+	for (i = 0; i < full_bytes; ++i) {
+		tx[i + 1] = data_out;
+	}
+	
+	// Handle remaining bits (1-3 bits)
+	size_t remainder = bits_left % 4;
+	if (remainder > 0) {
+		tx[i + 1] = data_out; // Use the next slot
+		spi_device2_transfer_data(tx, rx, i + 2); // Send header + full bytes + 1 partial
+	} else {
+		spi_device2_transfer_data(tx, rx, i + 1); // Send header + full bytes
+	}
+}
+
+//tdi_out set to 1, tms_out set to tms&1, generate bits of tck_out
 static void spi_jtag_tms_seq(uint32_t tms, size_t bits)
 {
 	if (bits == 0) return;
-	if (bits > 32) {
-		ESP_LOGE("spi_jtag", "TMS seq > 32 bits not supported");
-		return;
-	}
+    uint8_t tms_tdi = (tms&1)<<1 | 1;
+    uint8_t data_out = 0;
+    for(uint32_t i = 0; i<4; ++i){
+        data_out <<= 2;
+        data_out |=  tms_tdi;
+    }
+    
+    if(bits > 128){
+
+    }
+	//if (bits > 32) {
+	//	ESP_LOGE("spi_jtag", "TMS seq > 32 bits not supported");
+	//	return;
+	//}
 
 	uint8_t tx[10];
 	uint8_t rx[10];
