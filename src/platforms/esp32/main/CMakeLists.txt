@@ -119,8 +119,8 @@ main.c
 ../../../target/zynq7000.c
 #../../../platforms/common/blackpill-f4/blackpill-f4.c
 #../../../platforms/common/aux_serial.c
-../../../platforms/common/jtagtap.c
-../../../platforms/common/swdptap.c
+#../../../platforms/common/jtagtap.c
+#../../../platforms/common/swdptap.c
 #../../../platforms/common/usb.c
 #../../../platforms/common/usb_dfu_stub.c
 #../../../platforms/common/usb_serial.c

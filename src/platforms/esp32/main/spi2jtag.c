@@ -70,6 +70,7 @@ static void spi_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_
 	size_t bits_remaining = bits;
 	size_t offset = 0; // bit offset
 
+    PLATFORM_JTAG_YIELD();
 	while (bits_remaining > 0) {
 		size_t chunk = (bits_remaining > CHUNK_BITS) ? CHUNK_BITS : bits_remaining;
 		bool is_last = (chunk == bits_remaining);
@@ -155,6 +156,7 @@ static void spi_jtag_tdi_seq(bool final_tms, const uint8_t *data_in, size_t bits
 	size_t bits_remaining = bits;
 	size_t offset = 0;
 
+    PLATFORM_JTAG_YIELD();
 	while (bits_remaining > 0) {
 		size_t chunk = (bits_remaining > CHUNK_BITS) ? CHUNK_BITS : bits_remaining;
 		bool is_last = (chunk == bits_remaining);
@@ -215,6 +217,7 @@ static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
 	const size_t CHUNK_CYCLES = 255;
 	size_t cycles_remaining = cycles;
 	
+    //PLATFORM_JTAG_YIELD();
 	while (cycles_remaining > 0) {
 		size_t chunk = (cycles_remaining > CHUNK_CYCLES) ? CHUNK_CYCLES : cycles_remaining;
 		

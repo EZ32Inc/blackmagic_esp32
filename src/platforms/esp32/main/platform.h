@@ -52,10 +52,18 @@ IO09        Inout       TMS         SWDIO           GPIO41
 IO10        Inout       TCK         SWCLK           GPIO47
 IO11        Inout       TDI         NRST out        GPIO40  
 */
-#define TMS_PIN (41)
+#define SWCLK_PIN (47)
+#ifndef SWDIO_PIN
+#define SWDIO_PIN (41)
+#endif
+#ifndef SWDIO_RDnWR_PIN
+#define SWDIO_RDnWR_PIN (45)
+#endif
+
+#define TCK_PIN (SWCLK_PIN)
+#define TMS_PIN (SWDIO_PIN)
 #define TDI_PIN (40)
 #define TDO_PIN (15)
-#define TCK_PIN (47)
 //#define NRST_PIN (6)
 
 #define PLATFORM_HAS_TRACESWO 1 
@@ -66,16 +74,10 @@ IO11        Inout       TDI         NRST out        GPIO40
 // ON ESP32 we dont have the PORTS, this is dummy value until code is corrected
 //#define SWCLK_PORT  0
 
-#define SWDIO_PIN (TMS_PIN) //41
-#define SWCLK_PIN (TCK_PIN) //47
-#define SWDIO_RDnWR_PIN (45)
-
 // Allow debugging by toggling the pin
 //#define MY_DEBUG_PIN (12)
 
 extern uint32_t swd_delay_cnt;
-
-
 
 #define gpio_set_val(port, pin, value) do {	\
 		gpio_set_level(pin, value);		\

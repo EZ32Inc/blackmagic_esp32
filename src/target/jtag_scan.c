@@ -190,7 +190,7 @@ static bool jtag_read_idcodes(void)
 		}
 		/* We got a valid device, add it to the set */
 		jtag_devs[device].jd_idcode = idcode;
-        printf("aWe got a valid device ID code: 0x%08lx\n", idcode);
+        printf("We got a valid device ID code: 0x%08lx\n", idcode);
 	}
 
 	/* Well, it worked, so clean up and do housekeeping */
