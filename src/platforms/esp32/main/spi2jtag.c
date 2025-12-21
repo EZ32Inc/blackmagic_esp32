@@ -5,10 +5,16 @@
 
 #include "spi_common.h"
 
+extern bool SPI_nGPIO;
+
 /* Rename the original init function so we can wrap it */
 #define jtagtap_init gpio_jtagtap_init
+#define jtag_proc gpio_jtag_proc
 #include "../../../platforms/common/jtagtap.c"
 #undef jtagtap_init
+#undef jtag_proc
+
+jtag_proc_s jtag_proc;
 
 /* SPI FPGA JTAG Commands (Placeholders) */
 #define JTAG_CMD_TMS_SEQ      0x50
@@ -27,8 +33,8 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 {
 	if (bits == 0) return;
 
-	uint8_t tx[65];
-	uint8_t rx[65];
+	uint8_t tx[68];
+	uint8_t rx[68];
 	uint8_t tms_tdi = ((tms & 1) << 1) | (tdi & 1);
 	uint8_t data_out = 0;
 	uint32_t i = 0;
@@ -40,35 +46,66 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 	}
 
 	size_t bits_left = bits;
-	while (bits_left > 256) {
-		tx[0] = 255; // counter (256 - 1)
-		for (uint32_t j = 0; j < 64; ++j) {
-			tx[j + 1] = data_out;
+#if 1
+    i=0;
+	while (bits_left >= 256) {
+		tx[i++] = 255; // counter (256 - 1)
+
+#ifdef TEST_TMS_TDI
+		tx[i++] = 0x99;
+		tx[i++] = 0x66;
+		tx[i++] = 0x66;
+		tx[i++] = 0x99;
+		tx[i++] = 0x66;
+		tx[i++] = 0x99;
+#endif
+        
+		for (uint32_t j = i; j < 66; ++j) {
+			tx[j] = data_out;
 		}
-		spi_device2_transfer_data(tx, rx, 65);
+		spi_device2_transfer_data(tx, rx, 66);
 		bits_left -= 256;
 	}
-
+#else
+	while (bits_left >= 128) {
+		tx[0] = 127; // counter (256 - 1)
+		for (uint32_t j = 0; j < 33; ++j) {
+			tx[j + 1] = data_out;
+		}
+		spi_device2_transfer_data(tx, rx, 34);
+		bits_left -= 128;
+	}
+#endif
 	if (bits_left == 0)
+    {
+        //spi_device2_transfer_data(tx, rx, 1);
 		return;
+    }
 
-	tx[0] = bits_left - 1; // counter - 1
+    i=0;
+	tx[i++] = bits_left - 1; // counter - 1
 	
-	// Calculate full bytes needed (4 bits per byte)
-	size_t full_bytes = bits_left / 4;
-	
-	for (i = 0; i < full_bytes; ++i) {
-		tx[i + 1] = data_out;
+#ifdef TEST_TMS_TDI
+    //not correct for bits_left <24
+    if(bits_left>24){
+        tx[i++] = 0x99;
+        tx[i++] = 0x66;
+        tx[i++] = 0x66;
+        tx[i++] = 0x99;
+        tx[i++] = 0x66;
+        tx[i++] = 0x99;
+    }
+#endif
+
+    // Calculate full bytes needed (4 bits per byte)
+    size_t full_bytes = bits_left / 4;
+
+    //for (i = 0; i < full_bytes; ++i) {
+    for (; i < full_bytes+2; ++i) {
+		tx[i] = data_out;
 	}
 	
-	// Handle remaining bits (1-3 bits)
-	size_t remainder = bits_left % 4;
-	if (remainder > 0) {
-		tx[i + 1] = data_out; // Use the next slot
-		spi_device2_transfer_data(tx, rx, i + 2); // Send header + full bytes + 1 partial
-	} else {
-		spi_device2_transfer_data(tx, rx, i + 1); // Send header + full bytes
-	}
+    spi_device2_transfer_data(tx, rx, i);
     PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 }
 
@@ -311,17 +348,18 @@ void spi_jtag_init(void)
 /* Wrapper init function */
 void jtagtap_init(void)
 {
-	if (spi_or_gpio) {
+	if (SPI_nGPIO) {
 		spi_jtag_init();
 	} else {
 		gpio_jtagtap_init();
+		jtag_proc = gpio_jtag_proc;
 	}
 }
 
 void test_spi_jtag_tmstdi_seq(void)
 {
     ESP_LOGI("test_spi", "Starting spi_jtag_tmstdi_seq hardware test");
-
+#if 0
     // Test 1: 1 bit, TMS=1, TDI=0
     // Should send 1 byte (header=0) + 1 byte data
     ESP_LOGI("test_spi", "Test 1: 1 bit, TMS=1, TDI=0");
@@ -337,15 +375,43 @@ void test_spi_jtag_tmstdi_seq(void)
     ESP_LOGI("test_spi", "Test 3: 5 bits, TMS=1, TDI=1");
     spi_jtag_tmstdi_seq(1, 1, 5);
 
-    // Test 4: 8 bits, TMS=0, TDI=0
+    // Test 4.0: 8 bits, TMS=0, TDI=0
     // Should send 1 byte (header=7) + 2 bytes data
-    ESP_LOGI("test_spi", "Test 4: 8 bits, TMS=0, TDI=0");
+    ESP_LOGI("test_spi", "Test 4.0: 8 bits, TMS=0, TDI=0");
     spi_jtag_tmstdi_seq(0, 0, 8);
+
+    ESP_LOGI("test_spi", "Test 4.1: 32 bits, TMS=0, TDI=0");
+    spi_jtag_tmstdi_seq(0, 0, 32);
+
+    ESP_LOGI("test_spi", "Test 4.2: 35 bits, TMS=0, TDI=0");
+    spi_jtag_tmstdi_seq(0, 0, 35);
+
+    ESP_LOGI("test_spi", "Test 4.3: 64 bits, TMS=0, TDI=0");
+    spi_jtag_tmstdi_seq(0, 0, 64);
+#endif
+
+    ESP_LOGI("test_spi", "Test 4.4: 256 bits, TMS=1, TDI=0");
+    spi_jtag_tmstdi_seq(1, 0, 256);
+
+    ESP_LOGI("test_spi", "Test 4.5: 122 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(0, 1, 122);
+
+    ESP_LOGI("test_spi", "Test 4.6: 131 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(1, 1, 131);
+
+    ESP_LOGI("test_spi", "Test 4.7: 119 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(0, 1, 119);
+
+    ESP_LOGI("test_spi", "Test 4.8: 139 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(1, 0, 139);
+
+    ESP_LOGI("test_spi", "Test 4.9: 229 bits, TMS=0, TDI=1");
+    spi_jtag_tmstdi_seq(0, 1, 229);
 
     // Test 5: 256 bits, TMS=1, TDI=0
     // Should send 1 byte (header=255) + 64 bytes data
-    ESP_LOGI("test_spi", "Test 5: 256 bits, TMS=1, TDI=0");
-    spi_jtag_tmstdi_seq(1, 0, 256);
+    ESP_LOGI("test_spi", "Test 5: 25 bits, TMS=1, TDI=0");
+    spi_jtag_tmstdi_seq(1, 0, 25);
 
     // Test 6: 257 bits, TMS=0, TDI=1
     // Should send:
