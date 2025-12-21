@@ -27,6 +27,10 @@ jtag_proc_s jtag_proc;
 #include <string.h>
 #include "esp_log.h"
 
+static uint8_t current_tms = 0;
+static uint8_t current_tdi = 0;
+//static uint8_t current_tck = 0;
+
 //tdi_out set to tdi&1, tms_out set to tms&1, generate bits of tck_out
 //each spi clk will generate one tck and with same tms and tdi
 static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
@@ -46,12 +50,12 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 	}
 
 	size_t bits_left = bits;
-#if 1
+
     i=0;
 	while (bits_left >= 256) {
 		tx[i++] = 255; // counter (256 - 1)
 
-#ifdef TEST_TMS_TDI
+#if 0 //def TEST_TMS_TDI
 		tx[i++] = 0x99;
 		tx[i++] = 0x66;
 		tx[i++] = 0x66;
@@ -66,16 +70,7 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 		spi_device2_transfer_data(tx, rx, 66);
 		bits_left -= 256;
 	}
-#else
-	while (bits_left >= 128) {
-		tx[0] = 127; // counter (256 - 1)
-		for (uint32_t j = 0; j < 33; ++j) {
-			tx[j + 1] = data_out;
-		}
-		spi_device2_transfer_data(tx, rx, 34);
-		bits_left -= 128;
-	}
-#endif
+
 	if (bits_left == 0)
     {
         //spi_device2_transfer_data(tx, rx, 1);
@@ -85,7 +80,7 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
     i=0;
 	tx[i++] = bits_left - 1; // counter - 1
 	
-#ifdef TEST_TMS_TDI
+#if 0 //def TEST_TMS_TDI
     //not correct for bits_left <24
     if(bits_left>24){
         tx[i++] = 0x99;
@@ -110,178 +105,113 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 }
 
 //tdi_out set to 1, tms_out set to tms&1, generate bits of tck_out
+//Mimic jtagtap_tms_seq()
 static void spi_jtag_tms_seq(uint32_t tms, size_t bits)
 {
 	if (bits == 0) return;
-    uint8_t tms_tdi = (tms&1)<<1 | 1;
-    uint8_t data_out = 0;
-    for(uint32_t i = 0; i<4; ++i){
-        data_out <<= 2;
-        data_out |=  tms_tdi;
-    }
-    
-    if(bits > 128){
 
-    }
-	//if (bits > 32) {
-	//	ESP_LOGE("spi_jtag", "TMS seq > 32 bits not supported");
-	//	return;
-	//}
+    current_tdi = 1; //gpio_set(TDI_PORT, TDI_PIN);
+    current_tms = tms;
 
-	uint8_t tx[10];
-	uint8_t rx[10];
-	int i = 0;
-
-	// Header: Command, Bit Count
-	tx[i++] = JTAG_CMD_TMS_SEQ;
-	tx[i++] = (uint8_t)bits;
-
-	// Payload: TMS Data
-	// Reverse bits to send LSB first if FPGA expects MSB first on SPI
-	uint32_t tms_rev = reverse_bits32(tms);
-	// We need to align the bits. If we send 32 bits, it's fine.
-	// If we send fewer, reverse_bits32 moves them to the top.
-	// We should probably shift them back down or handle it.
-	// spi2swd.c: data = reverse_bits32(data_in); ... tx[i] = data>>24;
-	// It sends MSB of 'data' first.
-	// If bits=3, tms=0x07 (111). reverse=0xE0000000.
-	// We want to send 1, 1, 1.
-	// If we send 0xE0, SPI sends 11100000. Correct.
-	
-	// But we only need to send 'bits' bits?
-	// The pseudo code says "Payload: TMS Data (tms)".
-	// It doesn't say how many bytes.
-	// I'll send 4 bytes for simplicity, FPGA should ignore extra.
-	
-	tx[i++] = (tms_rev >> 24) & 0xFF;
-	tx[i++] = (tms_rev >> 16) & 0xFF;
-	tx[i++] = (tms_rev >> 8) & 0xFF;
-	tx[i++] = tms_rev & 0xFF;
-
-	spi_device2_transfer_data(tx, rx, i);
+    spi_jtag_tmstdi_seq(current_tms, current_tdi, bits);
 }
 
 static void spi_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_t *data_in, size_t bits)
 {
-	// Split into chunks if necessary. 
-	// Assuming FPGA can handle some max size. Let's say 256 bits (32 bytes).
-	const size_t CHUNK_BITS = 256;
-	size_t bits_remaining = bits;
-	size_t offset = 0; // bit offset
+    if (bits == 0) return;
 
-    PLATFORM_JTAG_YIELD();
-	while (bits_remaining > 0) {
-		size_t chunk = (bits_remaining > CHUNK_BITS) ? CHUNK_BITS : bits_remaining;
-		bool is_last = (chunk == bits_remaining);
-		bool current_final_tms = is_last ? final_tms : false; // Keep TMS low for intermediate chunks
+    uint8_t tx[68];
+    uint8_t rx[68];
+    size_t bits_left = bits;
+    size_t current_bit_index = 0;
 
-		uint8_t tx[CHUNK_BITS/8 + 10];
-		uint8_t rx[CHUNK_BITS/8 + 10];
-		int i = 0;
+    while (bits_left > 0) {
+        size_t chunk_bits = (bits_left > 256) ? 256 : bits_left;
+        
+        uint32_t i = 0;
+        tx[i++] = chunk_bits - 1;
 
-		tx[i++] = JTAG_CMD_SCAN_IO;
-		tx[i++] = (uint8_t)(chunk & 0xFF); // Assuming 8-bit length in header? 
-		// If chunk > 255, we need more bits for length. 
-		// But I limited CHUNK_BITS to 256. 256 fits in 9 bits (0-255 is 8 bits). 
-		// 256 -> 0? Let's limit to 248 bits (31 bytes) to be safe and fit in uint8_t if needed.
-		// Or just send 4 bytes length?
-		// Pseudo code: "Bit Count (bits)".
-		// I'll assume 1 byte length for now, so max 255 bits.
-		if (chunk > 255) chunk = 255; 
-		tx[1] = (uint8_t)chunk; // Update chunk size in header
-		
-		tx[i++] = current_final_tms ? 1 : 0;
-
-		// Payload: TDI Data
-		// data_in is uint8_t array.
-		// We need to copy 'chunk' bits from data_in + offset.
-		// This is tricky if offset is not byte-aligned.
-		// But standard JTAG sequences usually byte-aligned? 
-		// No, can be arbitrary.
-		// For simplicity, let's assume byte alignment for now or implement bit copy.
-		// spi2swd.c handles bit shifting.
-		
-		// To keep it simple for this iteration, I'll assume byte alignment for chunks 
-		// or just copy bytes and let FPGA handle bit count.
-		// But I need to reverse bits?
-		// spi2swd.c reverses bits.
-		
-		size_t byte_offset = offset / 8;
-		size_t bytes_to_copy = (chunk + 7) / 8;
-		
-		for (size_t b = 0; b < bytes_to_copy; b++) {
-			uint8_t val = data_in[byte_offset + b];
-			tx[i++] = reverse_bits8(val); 
-		}
-
-		spi_device2_transfer_data(tx, rx, i);
-
-		// Store TDO
-		if (data_out) {
-			for (size_t b = 0; b < bytes_to_copy; b++) {
-				// We need to reverse back?
-				// rx contains TDO data.
-				// spi2swd.c: rx_data |= (1UL << b);
-				// It seems spi2swd.c manually extracts bits.
-				// Here I'll assume rx matches tx layout.
-				// The RX data starts after the header?
-				// spi_device2_transfer_data is full duplex.
-				// RX[0] corresponds to TX[0].
-				// FPGA likely sends TDO data while we send TDI.
-				// But we send header first.
-				// So TDO data might be delayed by header size?
-				// Pseudo code: "Receive TDO Data from FPGA."
-				// "Target drives TDO on Falling Edge"
-				// If we send header, TDO is undefined/ignored during header?
-				// Or FPGA buffers TDO and sends it?
-				// I'll assume TDO comes back aligned with TDI payload.
-				// So RX index should match TX index for payload.
-				
-				// Header was 3 bytes.
-				uint8_t val = rx[3 + b];
-				data_out[byte_offset + b] = reverse_bits8(val);
-			}
-		}
-
-		bits_remaining -= chunk;
-		offset += chunk;
-	}
+        // Calculate number of data bytes needed (4 cycles per byte)
+        size_t num_data_bytes = (chunk_bits + 3) / 4;
+        
+        // Fill data bytes
+        for (size_t byte_idx = 0; byte_idx < num_data_bytes; ++byte_idx) {
+            uint8_t byte_val = 0;
+            for (int cycle = 0; cycle < 4; ++cycle) {
+                size_t bit_in_chunk = byte_idx * 4 + cycle;
+                if (bit_in_chunk >= chunk_bits) {
+                    break; 
+                }
+                
+                size_t total_bit_pos = current_bit_index + bit_in_chunk;
+                
+                // Determine TMS
+                bool tms = false;
+                if (final_tms && (total_bit_pos == bits - 1)) {
+                    tms = true;
+                }
+                
+                // Determine TDI
+                bool tdi = false;
+                if (data_in) {
+                    if (data_in[total_bit_pos / 8] & (1 << (total_bit_pos % 8))) {
+                        tdi = true;
+                    }
+                }
+                
+                // Pack into byte: Cycle 0 at Bits 7:6, Cycle 3 at Bits 1:0
+                // TMS is Bit 1, TDI is Bit 0 of the pair.
+                uint8_t tms_tdi = ((tms ? 1 : 0) << 1) | (tdi ? 1 : 0);
+                byte_val |= (tms_tdi << (6 - (cycle * 2)));
+            }
+            tx[i++] = byte_val;
+        }
+        
+        // Add one extra byte as seen in spi_jtag_tmstdi_seq
+        tx[i++] = 0;
+        
+        spi_device2_transfer_data(tx, rx, i);
+        
+        // Process RX to extract TDO
+        if (data_out) {
+            for (size_t byte_idx = 0; byte_idx < num_data_bytes; ++byte_idx) {
+                uint8_t rx_byte = rx[1 + byte_idx];
+                for (int cycle = 0; cycle < 4; ++cycle) {
+                    size_t bit_in_chunk = byte_idx * 4 + cycle;
+                    if (bit_in_chunk >= chunk_bits) break;
+                    
+                    size_t total_bit_pos = current_bit_index + bit_in_chunk;
+                    
+                    // Extract TDO from Bit 0 of the pair
+                    uint8_t pair = (rx_byte >> (6 - (cycle * 2))) & 0x3;
+                    bool tdo = (pair & 1); 
+                    
+                    if (tdo) {
+                        data_out[total_bit_pos / 8] |= (1 << (total_bit_pos % 8));
+                    } else {
+                        data_out[total_bit_pos / 8] &= ~(1 << (total_bit_pos % 8));
+                    }
+                }
+            }
+        }
+        
+        bits_left -= chunk_bits;
+        current_bit_index += chunk_bits;
+    }
+    
+    // Update global state
+    current_tms = final_tms ? 1 : 0;
+    if (data_in) {
+        current_tdi = (data_in[(bits - 1) / 8] & (1 << ((bits - 1) % 8))) ? 1 : 0;
+    //} else {
+    //    current_tdi = 0;
+    }
 }
 
+//mimic jtagtap_tdi_seq()
 static void spi_jtag_tdi_seq(bool final_tms, const uint8_t *data_in, size_t bits)
 {
-	// Similar to tdi_tdo but no read back
-	const size_t CHUNK_BITS = 248;
-	size_t bits_remaining = bits;
-	size_t offset = 0;
-
-    PLATFORM_JTAG_YIELD();
-	while (bits_remaining > 0) {
-		size_t chunk = (bits_remaining > CHUNK_BITS) ? CHUNK_BITS : bits_remaining;
-		bool is_last = (chunk == bits_remaining);
-		bool current_final_tms = is_last ? final_tms : false;
-
-		uint8_t tx[CHUNK_BITS/8 + 10];
-		uint8_t rx[CHUNK_BITS/8 + 10];
-		int i = 0;
-
-		tx[i++] = JTAG_CMD_SCAN_OUT;
-		tx[i++] = (uint8_t)chunk;
-		tx[i++] = current_final_tms ? 1 : 0;
-
-		size_t byte_offset = offset / 8;
-		size_t bytes_to_copy = (chunk + 7) / 8;
-		
-		for (size_t b = 0; b < bytes_to_copy; b++) {
-			uint8_t val = data_in[byte_offset + b];
-			tx[i++] = reverse_bits8(val);
-		}
-
-		spi_device2_transfer_data(tx, rx, i);
-
-		bits_remaining -= chunk;
-		offset += chunk;
-	}
+    spi_jtag_tdi_tdo_seq(NULL, final_tms, data_in, bits);
 }
 
 static bool spi_jtag_next(bool tms, bool tdi)
@@ -304,38 +234,31 @@ static bool spi_jtag_next(bool tms, bool tdi)
 
 static void spi_jtag_reset(void)
 {
+    //TODO
+    /*
 	uint8_t tx[2];
 	uint8_t rx[2];
 	tx[0] = JTAG_CMD_RESET;
 	spi_device2_transfer_data(tx, rx, 1);
+    */
 }
 
 static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
 {
-	// Split if cycles is large
-	const size_t CHUNK_CYCLES = 255;
-	size_t cycles_remaining = cycles;
-	
-    //PLATFORM_JTAG_YIELD();
-	while (cycles_remaining > 0) {
-		size_t chunk = (cycles_remaining > CHUNK_CYCLES) ? CHUNK_CYCLES : cycles_remaining;
-		
-		uint8_t tx[4];
-		uint8_t rx[4];
-		int i = 0;
 
-		tx[i++] = JTAG_CMD_CYCLE;
-		tx[i++] = (uint8_t)chunk;
-		tx[i++] = (tms ? 1 : 0) | (tdi ? 2 : 0);
+	if (cycles == 0) return;
 
-		spi_device2_transfer_data(tx, rx, i);
-		
-		cycles_remaining -= chunk;
-	}
+    current_tdi = tdi ? 1 : 0;
+    current_tms = tms ? 1 : 0;
+
+    spi_jtag_tmstdi_seq(current_tms, current_tdi, cycles);
 }
 
 void spi_jtag_init(void)
 {
+	//platform_target_clk_output_enable(true);
+	//TMS_SET_MODE();
+
 	jtag_proc.jtagtap_reset = spi_jtag_reset;
 	jtag_proc.jtagtap_next = spi_jtag_next;
 	jtag_proc.jtagtap_tms_seq = spi_jtag_tms_seq;
@@ -343,6 +266,37 @@ void spi_jtag_init(void)
 	jtag_proc.jtagtap_tdi_seq = spi_jtag_tdi_seq;
 	jtag_proc.jtagtap_cycle = spi_jtag_cycle;
 	jtag_proc.tap_idle_cycles = 1;
+
+	/* Ensure we're in JTAG mode. Start by issuing a complete SWD reset of at least 50 reset cycles */
+	spi_jtag_cycle(true, false, 51U);
+	/* Having achieved reset, try the deprecated 16-bit SWD-to-JTAG sequence */
+	spi_jtag_tms_seq(ADIV5_SWD_TO_JTAG_SELECT_SEQUENCE, 16U);
+	/* Next, to complete that sequence, do a full 50+ cycle reset again */
+	spi_jtag_cycle(true, false, 51U);
+	/*
+	 * For parts that implement the old sequence, we're done.. however, for parts that do not, we
+	 * now need to do SWD-to-Dormant-State
+	 */
+	spi_jtag_tms_seq(ADIV5_SWD_TO_DORMANT_SEQUENCE, 16U);
+	/* Having achieved this state, we now have to signal we want to change states with the alert sequence */
+	spi_jtag_tms_seq(0xffU, 8U); /* 8 reset cycles used to ensure the target's in a happy place */
+	/* 128-bit Selection Alert sequence */
+	spi_jtag_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
+	spi_jtag_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
+	spi_jtag_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
+	spi_jtag_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_3, 32U);
+	/*
+	 * Now ask for JTAG please
+	 * We combine the last two sequences in a single spi_jtag_tms_seq as an optimization
+	 *
+	 * Send 4 SWCLKTCK cycles with SWDIOTMS LOW
+	 * Send the required 8 bit activation code sequence on SWDIOTMS
+	 *
+	 * The bits are shifted out to the right, so we shift the second sequence left by the size of the first sequence
+	 * The first sequence is 4 bits and the second 8 bits, totaling 12 bits in the combined sequence
+	 */
+	spi_jtag_tms_seq(ADIV5_ACTIVATION_CODE_ARM_JTAG_DP << 4U, 12U);
+	/* At this point we are definitely in JTAG mode - let the scan logic reset the state machine into a good state. */
 }
 
 /* Wrapper init function */
