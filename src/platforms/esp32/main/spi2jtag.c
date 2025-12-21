@@ -216,20 +216,10 @@ static void spi_jtag_tdi_seq(bool final_tms, const uint8_t *data_in, size_t bits
 
 static bool spi_jtag_next(bool tms, bool tdi)
 {
-	uint8_t tx[4];
-	uint8_t rx[4];
-	int i = 0;
-
-	tx[i++] = JTAG_CMD_CYCLE;
-	tx[i++] = 1; // 1 cycle
-	tx[i++] = (tms ? 1 : 0) | (tdi ? 2 : 0); // Payload: TMS, TDI packed?
-
-	spi_device2_transfer_data(tx, rx, i);
-	
-	// Return TDO?
-	// Pseudo code: "Receive TDO bit (if needed, usually returned in status)."
-	// Assuming RX[2] contains TDO in bit 0?
-	return (rx[2] & 1) ? true : false;
+    uint8_t data_in = tdi ? 1 : 0;
+    uint8_t data_out = 0;
+    spi_jtag_tdi_tdo_seq(&data_out, tms, &data_in, 1);
+    return (data_out & 1) ? true : false;
 }
 
 static void spi_jtag_reset(void)
@@ -258,6 +248,8 @@ void spi_jtag_init(void)
 {
 	//platform_target_clk_output_enable(true);
 	//TMS_SET_MODE();
+
+    ESP_LOGI("spi2jtag", "To do spi_jtag_init()");
 
 	jtag_proc.jtagtap_reset = spi_jtag_reset;
 	jtag_proc.jtagtap_next = spi_jtag_next;
