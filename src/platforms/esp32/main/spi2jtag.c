@@ -93,14 +93,17 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 #endif
 
     // Calculate full bytes needed (4 bits per byte)
-    size_t full_bytes = bits_left / 4;
+    size_t full_bytes = (bits_left+3) / 4;
+    if(bits_left % 4 == 0){
+        full_bytes ++;
+    }
 
-    //for (i = 0; i < full_bytes; ++i) {
-    for (; i < full_bytes+2; ++i) {
+    for (; i < full_bytes+1; ++i) {
 		tx[i] = data_out;
 	}
 	
     spi_device2_transfer_data(tx, rx, i);
+    //printf("spi_jtag_tmstdi_seq(): bits=%d full_bytes=%d\n", bits, full_bytes);
     PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 }
 
@@ -110,10 +113,36 @@ static void spi_jtag_tms_seq(uint32_t tms, size_t bits)
 {
 	if (bits == 0) return;
 
-    current_tdi = 1; //gpio_set(TDI_PORT, TDI_PIN);
-    current_tms = tms;
+    uint8_t tx[16]; // Sufficient for 32 bits (needs ~1+8 bytes)
+    uint8_t rx[16];
+    
+    tx[0] = bits - 1;
+    size_t num_bytes = (bits + 3) / 4;
+    
+    for (size_t i = 0; i < num_bytes; ++i) {
+        uint8_t val = 0;
+        for (int j = 0; j < 4; ++j) {
+            size_t bit_idx = i * 4 + j;
+            if (bit_idx < bits) {
+                uint8_t tms_bit = (tms >> bit_idx) & 1;
+                uint8_t tdi_bit = 1;
+                uint8_t pair = (tms_bit << 1) | tdi_bit;
+                val |= (pair << (6 - 2 * j));
+            }
+        }
+        tx[1 + i] = val;
+    }
+    
+    if(bits % 4 ==0){
+        num_bytes++;
+    }
 
-    spi_jtag_tmstdi_seq(current_tms, current_tdi, bits);
+    // Send data
+    spi_device2_transfer_data(tx, rx, 1 + num_bytes);
+    
+    // Update global state
+    current_tdi = 1;
+    current_tms = (tms >> (bits - 1)) & 1;
 }
 
 static void spi_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_t *data_in, size_t bits)
@@ -168,7 +197,10 @@ static void spi_jtag_tdi_tdo_seq(uint8_t *data_out, bool final_tms, const uint8_
         }
         
         // Add one extra byte as seen in spi_jtag_tmstdi_seq
-        tx[i++] = 0;
+        //if(bits>=4){
+        if(bits % 4 == 0){
+            tx[i++] = 0;
+        }
         
         spi_device2_transfer_data(tx, rx, i);
         
@@ -219,18 +251,22 @@ static bool spi_jtag_next(bool tms, bool tdi)
     uint8_t data_in = tdi ? 1 : 0;
     uint8_t data_out = 0;
     spi_jtag_tdi_tdo_seq(&data_out, tms, &data_in, 1);
+    //printf("spi_jtag_next: data_out=0x%x\n", data_out);
     return (data_out & 1) ? true : false;
 }
 
 static void spi_jtag_reset(void)
 {
-    //TODO
-    /*
-	uint8_t tx[2];
-	uint8_t rx[2];
-	tx[0] = JTAG_CMD_RESET;
-	spi_device2_transfer_data(tx, rx, 1);
-    */
+#if 0 //def TRST_PORT
+    //TODO to eb added
+	if (platform_hwversion() == 0) {
+		gpio_clear(TRST_PORT, TRST_PIN);
+		for (volatile size_t i = 0; i < 10000U; i++)
+			continue;
+		gpio_set(TRST_PORT, TRST_PIN);
+	}
+#endif
+	jtagtap_soft_reset();
 }
 
 static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
@@ -244,12 +280,16 @@ static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
     spi_jtag_tmstdi_seq(current_tms, current_tdi, cycles);
 }
 
+extern esp_err_t set_cfga(bool use_porta, bool njtag_swdio, bool swd_gpio);
+
 void spi_jtag_init(void)
 {
 	//platform_target_clk_output_enable(true);
 	//TMS_SET_MODE();
 
     ESP_LOGI("spi2jtag", "To do spi_jtag_init()");
+    SPI_nGPIO = true;
+    set_cfga(true, false, false);
 
 	jtag_proc.jtagtap_reset = spi_jtag_reset;
 	jtag_proc.jtagtap_next = spi_jtag_next;
@@ -260,6 +300,7 @@ void spi_jtag_init(void)
 	jtag_proc.tap_idle_cycles = 1;
 
 	/* Ensure we're in JTAG mode. Start by issuing a complete SWD reset of at least 50 reset cycles */
+    //vTaskDelay(30 / portTICK_PERIOD_MS);
 	spi_jtag_cycle(true, false, 51U);
 	/* Having achieved reset, try the deprecated 16-bit SWD-to-JTAG sequence */
 	spi_jtag_tms_seq(ADIV5_SWD_TO_JTAG_SELECT_SEQUENCE, 16U);

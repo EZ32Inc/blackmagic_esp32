@@ -56,6 +56,14 @@ static void jtagtap_cycle(bool tms, bool tdi, size_t clock_cycles);
 
 void jtagtap_init(void)
 {
+
+#ifdef ESP_PLATFORM
+    printf("jtagtap_init()\n");
+    SPI_nGPIO = false; //use GPIO
+    //extern esp_err_t set_cfga(bool use_porta, bool njtag_swdio, bool swd_gpio);
+    //set_cfga(true, true, false);
+#endif
+
 	platform_target_clk_output_enable(true);
 	TMS_SET_MODE();
 
@@ -68,6 +76,8 @@ void jtagtap_init(void)
 	jtag_proc.tap_idle_cycles = 1;
 
 	/* Ensure we're in JTAG mode. Start by issuing a complete SWD reset of at least 50 reset cycles */
+    //printf("jtagtap_cycle 51\n");
+    //vTaskDelay(30 / portTICK_PERIOD_MS);
 	jtagtap_cycle(true, false, 51U);
 	/* Having achieved reset, try the deprecated 16-bit SWD-to-JTAG sequence */
 	jtagtap_tms_seq(ADIV5_SWD_TO_JTAG_SELECT_SEQUENCE, 16U);
@@ -81,6 +91,7 @@ void jtagtap_init(void)
 	/* Having achieved this state, we now have to signal we want to change states with the alert sequence */
 	jtagtap_tms_seq(0xffU, 8U); /* 8 reset cycles used to ensure the target's in a happy place */
 	/* 128-bit Selection Alert sequence */
+
 	jtagtap_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_0, 32U);
 	jtagtap_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_1, 32U);
 	jtagtap_tms_seq(ADIV5_SELECTION_ALERT_SEQUENCE_2, 32U);
