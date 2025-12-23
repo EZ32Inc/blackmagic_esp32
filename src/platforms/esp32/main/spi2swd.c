@@ -287,14 +287,14 @@ static bool spi_swd_seq_in_parity(uint32_t *parity_data, size_t nbit)
     return (calculated_parity == parity_bit);
 }
 
+extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool swd_gpio);
 
 void spi_swd_init(void)
 {
-    extern esp_err_t set_cfga(bool use_porta, bool njtag_swdio, bool swd_gpio);
 
     printf("jtagtap_init()\n");
     SPI_nGPIO = true;
-    set_cfga(true, true, false);
+    set_cfga(true, false, false, false);
 
 	swd_proc.seq_in = spi_swd_seq_in;
 	swd_proc.seq_out = spi_swd_seq_out;

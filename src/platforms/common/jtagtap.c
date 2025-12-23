@@ -60,8 +60,8 @@ void jtagtap_init(void)
 #ifdef ESP_PLATFORM
     printf("jtagtap_init()\n");
     SPI_nGPIO = false; //use GPIO
-    //extern esp_err_t set_cfga(bool use_porta, bool njtag_swdio, bool swd_gpio);
-    //set_cfga(true, true, false);
+    //extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool swd_gpio);
+    //set_cfga(true, false, true, false);
 #endif
 
 	platform_target_clk_output_enable(true);

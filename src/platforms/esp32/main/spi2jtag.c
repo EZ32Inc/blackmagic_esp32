@@ -35,6 +35,7 @@ static uint8_t current_tdi = 0;
 //each spi clk will generate one tck and with same tms and tdi
 static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 {
+    PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 	if (bits == 0) return;
 
 	uint8_t tx[68];
@@ -104,13 +105,13 @@ static void spi_jtag_tmstdi_seq(uint8_t tms, uint8_t tdi, size_t bits)
 	
     spi_device2_transfer_data(tx, rx, i);
     //printf("spi_jtag_tmstdi_seq(): bits=%d full_bytes=%d\n", bits, full_bytes);
-    PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 }
 
 //tdi_out set to 1, tms_out set to tms&1, generate bits of tck_out
 //Mimic jtagtap_tms_seq()
 static void spi_jtag_tms_seq(uint32_t tms, size_t bits)
 {
+    PLATFORM_JTAG_YIELD(); // Prevent watchdog timeout
 	if (bits == 0) return;
 
     uint8_t tx[16]; // Sufficient for 32 bits (needs ~1+8 bytes)
@@ -280,7 +281,7 @@ static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
     spi_jtag_tmstdi_seq(current_tms, current_tdi, cycles);
 }
 
-extern esp_err_t set_cfga(bool use_porta, bool njtag_swdio, bool swd_gpio);
+extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool swd_gpio);
 
 void spi_jtag_init(void)
 {
@@ -289,7 +290,7 @@ void spi_jtag_init(void)
 
     ESP_LOGI("spi2jtag", "To do spi_jtag_init()");
     SPI_nGPIO = true;
-    set_cfga(true, false, false);
+    set_cfga(true, false, false, false);
 
 	jtag_proc.jtagtap_reset = spi_jtag_reset;
 	jtag_proc.jtagtap_next = spi_jtag_next;
