@@ -292,15 +292,15 @@ extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool
 void spi_swd_init(void)
 {
 
-    printf("jtagtap_init()\n");
+    ESP_LOGI("spi_swd_init", "spi_swd_init() begins\n");
     SPI_nGPIO = true;
-    set_cfga(true, false, false, false);
+    set_cfga(true, false, true, false);
 
 	swd_proc.seq_in = spi_swd_seq_in;
 	swd_proc.seq_out = spi_swd_seq_out;
 	swd_proc.seq_in_parity = spi_swd_seq_in_parity;
 	swd_proc.seq_out_parity = spi_swd_seq_out_parity;
-    ESP_LOGI("spi_swd_init", "spi_swd_init() done\n");
+    //ESP_LOGI("spi_swd_init", "spi_swd_init() done\n");
 }
 
 /* Wrapper init function */
