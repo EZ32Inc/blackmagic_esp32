@@ -281,7 +281,7 @@ static void spi_jtag_cycle(bool tms, bool tdi, size_t cycles)
     spi_jtag_tmstdi_seq(current_tms, current_tdi, cycles);
 }
 
-extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool swd_gpio);
+//extern esp_err_t set_cfga(bool use_portc, bool use_porta, bool njtag_swdio, bool swd_gpio);
 
 void spi_jtag_init(void)
 {
@@ -289,8 +289,8 @@ void spi_jtag_init(void)
 	//TMS_SET_MODE();
 
     ESP_LOGI("spi2jtag", "To do spi_jtag_init()");
-    SPI_nGPIO = true;
-    set_cfga(true, false, false, false);
+    //SPI_nGPIO = true;
+    //set_cfga(true, false, false, false);
 
 	jtag_proc.jtagtap_reset = spi_jtag_reset;
 	jtag_proc.jtagtap_next = spi_jtag_next;
