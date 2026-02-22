@@ -57,9 +57,15 @@ uint32_t swd_delay_cnt = 0;
 //TODO: To check
 uint32_t target_clk_divider = 0;
 
-/* Values for STM32F103 at 72 MHz */
+#ifdef ESP32S3_FASTGPIO
+/* Option 2: ESP32-S3 using direct fast GPIO register writes */
 #define USED_SWD_CYCLES 22
 #define CYCLES_PER_CNT 10
+#else
+/* Option 1: ESP32-S3 baseline using ESP-IDF gpio_set_level function */
+#define USED_SWD_CYCLES 200
+#define CYCLES_PER_CNT 5
+#endif
 void platform_max_frequency_set(uint32_t freq)
 {
 	int rcc_ahb_frequency = 240*1024*1024;

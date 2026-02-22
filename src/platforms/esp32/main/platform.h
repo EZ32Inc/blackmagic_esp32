@@ -79,14 +79,40 @@ IO11        Inout       TDI         NRST out        GPIO40
 
 extern uint32_t swd_delay_cnt;
 
+// Uncomment the following line to enable Option 2 (Fast GPIO via direct register writes)
+#define ESP32S3_FASTGPIO 1
+
+#ifdef ESP32S3_FASTGPIO
+#include "soc/gpio_reg.h"
+
+#define gpio_set(port, pin) do { \
+    if ((pin) < 32) REG_WRITE(GPIO_OUT_W1TS_REG, (uint32_t)(1ULL << ((pin) & 31))); \
+    else REG_WRITE(GPIO_OUT1_W1TS_REG, (uint32_t)(1ULL << (((pin) - 32) & 31))); \
+} while (0)
+
+#define gpio_clear(port, pin) do { \
+    if ((pin) < 32) REG_WRITE(GPIO_OUT_W1TC_REG, (uint32_t)(1ULL << ((pin) & 31))); \
+    else REG_WRITE(GPIO_OUT1_W1TC_REG, (uint32_t)(1ULL << (((pin) - 32) & 31))); \
+} while (0)
+
+#define gpio_get(port, pin) (((pin) < 32) ? (REG_READ(GPIO_IN_REG) >> ((pin) & 31)) & 1 : (REG_READ(GPIO_IN1_REG) >> (((pin) - 32) & 31)) & 1)
+
+#define gpio_set_val(port, pin, value) do { \
+    if (value) gpio_set(port, pin); \
+    else gpio_clear(port, pin); \
+} while(0)
+
+#else // Option 1: Use ESP-IDF gpio_set_level
+
 #define gpio_set_val(port, pin, value) do {	\
 		gpio_set_level(pin, value);		\
-		/*sdk_os_delay_us(2);	*/	\
 	} while (0);
 
 #define gpio_set(port, pin) gpio_set_val(port, pin, 1)
 #define gpio_clear(port, pin) gpio_set_val(port, pin, 0)
 #define gpio_get(port, pin) gpio_get_level(pin)
+
+#endif
 
 // TODO https://esp-idf.readthedocs.io/en/v2.0/api/peripherals/gpio.html#_CPPv216gpio_pull_mode_t
 // GPIO_FLOATING
