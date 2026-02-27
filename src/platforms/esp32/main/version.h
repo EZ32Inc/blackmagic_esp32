@@ -1,1 +1,1 @@
-#define FIRMWARE_VERSION  "v1.7.1-427-gcea87d0-dirty"
+#define FIRMWARE_VERSION  "v2.0.0_esp32jtag"
