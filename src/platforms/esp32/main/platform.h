@@ -22,7 +22,7 @@
 #define __PLATFORM_H
 
 //#define BOARD_IDENT             "ESP32 Black Magic Probe"
-#define PLATFORM_IDENT          " (ESP32))"
+#define PLATFORM_IDENT          " ESP32JTAG_"
 
 #undef PRIx32
 #define PRIx32 "lx"
