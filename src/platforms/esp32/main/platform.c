@@ -116,7 +116,7 @@ void pins_init() {
     //SWDIO_MODE_FLOAT();
     //gpio_set_level(SWDIO_RDnWR_PIN, 1);
 
-    SWDIO_MODE_DRIVE();
+    SWDIO_MODE_FLOAT();
 
     //set TDO:
     gpio_set_direction(TDO_PIN, GPIO_MODE_INPUT);
