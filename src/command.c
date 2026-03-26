@@ -248,8 +248,12 @@ static bool cmd_jtag_scan(target_s *target, int argc, const char **argv)
 
 	gdb_outf("Target voltage: %s\n", platform_target_voltage());
 
+	platform_max_frequency_set(AEL_BMP_DEFAULT_FREQUENCY_HZ);
+
 	if (connect_assert_nrst)
 		platform_nrst_set_val(true); /* will be deasserted after attach */
+
+	platform_max_frequency_set(AEL_BMP_DEFAULT_FREQUENCY_HZ);
 
 	bool scan_result = false;
 	TRY (EXCEPTION_ALL) {
@@ -290,6 +294,8 @@ bool cmd_swd_scan(target_s *target, int argc, const char **argv)
 	if (argc > 1)
 		targetid = strtoul(argv[1], NULL, 0);
 	gdb_outf("Target voltage: %s\n", platform_target_voltage());
+
+	platform_max_frequency_set(AEL_BMP_DEFAULT_FREQUENCY_HZ);
 
 	if (connect_assert_nrst)
 		platform_nrst_set_val(true); /* will be deasserted after attach */

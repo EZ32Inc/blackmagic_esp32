@@ -106,6 +106,8 @@ int esp32_main(void)
 	swo_if_init();
 #endif
 
+	platform_max_frequency_set(AEL_BMP_DEFAULT_FREQUENCY_HZ);
+
 	while (true) {
 		TRY (EXCEPTION_ALL) {
 			bmp_poll_loop();
