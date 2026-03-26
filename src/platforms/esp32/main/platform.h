@@ -22,7 +22,7 @@
 #define __PLATFORM_H
 
 //#define BOARD_IDENT             "ESP32 Black Magic Probe"
-#define PLATFORM_IDENT          " ESP32JTAG_"
+#define PLATFORM_IDENT          " " AEL_BOARD_IDENT_SUFFIX "_"
 
 #undef PRIx32
 #define PRIx32 "lx"
@@ -40,6 +40,7 @@
 
 #include "timing.h"
 #include "driver/gpio.h"
+#include "board_profile.h"
 
 #include <freertos/FreeRTOS.h>
 
@@ -52,18 +53,18 @@ IO09        Inout       TMS         SWDIO           GPIO41
 IO10        Inout       TCK         SWCLK           GPIO47
 IO11        Inout       TDI         NRST out        GPIO40  
 */
-#define SWCLK_PIN (47)
+#define SWCLK_PIN (AEL_BMP_SWCLK_PIN)
 #ifndef SWDIO_PIN
-#define SWDIO_PIN (41)
+#define SWDIO_PIN (AEL_BMP_SWDIO_PIN)
 #endif
 #ifndef SWDIO_RDnWR_PIN
-#define SWDIO_RDnWR_PIN (45)
+#define SWDIO_RDnWR_PIN (AEL_BMP_SWDIO_RDNWR_PIN)
 #endif
 
 #define TCK_PIN (SWCLK_PIN)
 #define TMS_PIN (SWDIO_PIN)
-#define TDI_PIN (40)
-#define TDO_PIN (15)
+#define TDI_PIN (AEL_BMP_TDI_PIN)
+#define TDO_PIN (AEL_BMP_TDO_PIN)
 //#define NRST_PIN (6)
 
 #define PLATFORM_HAS_TRACESWO 1 
