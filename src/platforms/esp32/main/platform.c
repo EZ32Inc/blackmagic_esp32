@@ -91,7 +91,7 @@ uint32_t platform_max_frequency_get(void)
 
 
 //  | (1<<MY_DEBUG_PIN)
-#define GPIO_OUTPUT_PIN_SEL  ((1ULL<<SWDIO_RDnWR_PIN) | (1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | \
+#define GPIO_OUTPUT_PIN_SEL  (((AEL_BMP_HAS_SWDIO_RDNWR ? (1ULL << SWDIO_RDnWR_PIN) : 0ULL)) | (1ULL<<SWCLK_PIN) | (1ULL<<SWDIO_PIN) | \
         (1ULL<<TMS_PIN) | (1ULL<<TDI_PIN) | (1ULL<<TDO_PIN) | (1ULL<<TCK_PIN))
 //#define GPIO_OUTPUT_PIN_SEL  (BIT(SWDIO_RDnWR_PIN) | BIT(SWCLK_PIN) | BIT(SWDIO_PIN) | BIT(TMS_PIN) | BIT(TDI_PIN) | BIT(TDO_PIN) | BIT(TCK_PIN))
 
@@ -111,8 +111,10 @@ void pins_init() {
     //configure GPIO with the given settings
     gpio_config(&io_conf);
 
-    //set SWDIO_RDnWR_PIN
-    gpio_set_direction(SWDIO_RDnWR_PIN, GPIO_MODE_OUTPUT);
+    //set SWDIO_RDnWR_PIN when present
+    if (AEL_BMP_HAS_SWDIO_RDNWR) {
+        gpio_set_direction(SWDIO_RDnWR_PIN, GPIO_MODE_OUTPUT);
+    }
     //SWDIO_MODE_FLOAT();
     //gpio_set_level(SWDIO_RDnWR_PIN, 1);
 

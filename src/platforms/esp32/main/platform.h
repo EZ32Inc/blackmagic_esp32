@@ -121,14 +121,14 @@ extern uint32_t swd_delay_cnt;
 #define SWDIO_MODE_FLOAT() do {			\
 		gpio_set_direction(SWDIO_PIN, GPIO_MODE_INPUT);		\
 		gpio_set_pull_mode(SWDIO_PIN, GPIO_FLOATING);		\
-        gpio_set_level(SWDIO_RDnWR_PIN, 1); \
+		if (AEL_BMP_HAS_SWDIO_RDNWR) gpio_set_level(SWDIO_RDnWR_PIN, 1); \
 	} while (0)
 
  //gpio_enable(SWDIO_PIN, GPIO_OUTPUT);		
 
 #define SWDIO_MODE_DRIVE() do {				\
-           gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);		\
-           gpio_set_level(SWDIO_RDnWR_PIN, 0); \
+		gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT);		\
+		if (AEL_BMP_HAS_SWDIO_RDNWR) gpio_set_level(SWDIO_RDnWR_PIN, 0); \
 	} while (0)
 
 //#define PLATFORM_HAS_DEBUG  1/
