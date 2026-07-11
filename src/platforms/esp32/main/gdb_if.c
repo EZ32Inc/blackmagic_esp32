@@ -72,6 +72,7 @@ typedef int32_t socket_t;
 #include "gdb_if.h"
 //#include "bmp_hosted.h"
 #include "command.h"
+#include "target.h"
 
 #define DEFAULT_PORT 4242U
 static const uint16_t default_port = DEFAULT_PORT;
@@ -323,6 +324,14 @@ char gdb_if_getchar(void)
 		gdb_rx_buffer_len = 0;
 		gdb_rx_buffer_pos = 0;
 		gdb_tx_buffer_used = 0;
+		/* Clear stale target state from previous session */
+		extern target_s *cur_target;
+		extern target_s *last_target;
+		extern bool gdb_target_running;
+		cur_target = NULL;
+		last_target = NULL;
+		gdb_target_running = false;
+		target_list_free();
 	}
 
 	/* If buffer is empty, refill it */

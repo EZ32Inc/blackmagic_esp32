@@ -43,8 +43,10 @@
 #include "board_profile.h"
 
 #include <freertos/FreeRTOS.h>
-
-#define TMS_SET_MODE() do { } while (0)
+#define TMS_SET_MODE() do { \
+		gpio_set_direction(SWDIO_PIN, GPIO_MODE_OUTPUT); \
+		if (AEL_BMP_HAS_SWDIO_RDNWR) gpio_set_level(SWDIO_RDnWR_PIN, 0); \
+	} while (0)
 /*
 P3:
 IO PIN      I/O         JTAG        SWDIO           ESP32 GPIO
