@@ -117,6 +117,7 @@ target_controller_s gdb_controller = {
 int32_t gdb_main_loop(target_controller_s *const tc, const gdb_packet_s *const packet, const bool in_syscall)
 {
 	bool single_step = false;
+	bool target_was_resumed = false;
 	const char *rest = NULL;
 
 	/* GDB protocol main loop */
@@ -216,6 +217,7 @@ int32_t gdb_main_loop(target_controller_s *const tc, const gdb_packet_s *const p
 			break;
 		}
 
+		target_was_resumed = true;
 		target_halt_resume(cur_target, single_step);
 		SET_RUN_STATE(true);
 		BMD_FALLTHROUGH
@@ -228,14 +230,22 @@ int32_t gdb_main_loop(target_controller_s *const tc, const gdb_packet_s *const p
 			gdb_put_packet_str("W00"); /* Report "target exited" if no target */
 			break;
 		}
-
-		/*
-		 * The target is running, so there is no response to give.
-		 * The calling function will poll the state of the target
-		 * by calling gdb_poll_target() as long as `cur_target`
-		 * is not NULL and `gdb_target_running` is true.
-		 */
-		gdb_target_running = true;
+		if (target_was_resumed) {
+			/*
+			 * Target was resumed by 'c' or 's', so there is no response to give.
+			 * The calling function will poll the state of the target
+			 * by calling gdb_poll_target() as long as `cur_target`
+			 * is not NULL and `gdb_target_running` is true.
+			 */
+			gdb_target_running = true;
+		} else {
+			/*
+			 * Target is halted (e.g. after attach). Report it as stopped
+			 * immediately instead of polling, which can cause JTAG faults
+			 * over slow links (WiFi).
+			 */
+			gdb_putpacket_str_f("T%02Xthread:1;", GDB_SIGTRAP);
+		}
 		break;
 	}
 
